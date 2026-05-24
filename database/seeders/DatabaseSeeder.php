@@ -2,16 +2,21 @@
 
 namespace Database\Seeders;
 
-use App\Models\Empresa;
 use App\Models\AccionTerapeutica;
+use App\Models\AfectacionIgv;
 use App\Models\Categoria;
+use App\Models\Cliente;
+use App\Models\Empresa;
 use App\Models\Laboratorio;
+use App\Models\Lote;
 use App\Models\Marca;
 use App\Models\Permission;
 use App\Models\PrincipioActivo;
+use App\Models\Producto;
 use App\Models\ProductoConfiguracion;
+use App\Models\ProductoPresentacion;
 use App\Models\Role;
-use App\Models\SerieComprobante;
+use App\Models\Stock;
 use App\Models\Tienda;
 use App\Models\Tenant;
 use App\Models\UnidadMedida;
@@ -19,6 +24,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
@@ -26,6 +32,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            AfectacionIgvSeeder::class,
             MotivoTrasladoSeeder::class,
             ModalidadTransporteSeeder::class,
             UnidadMedidaSunatSeeder::class,
@@ -33,502 +40,401 @@ class DatabaseSeeder extends Seeder
             MotivoNotaCreditoSeeder::class,
             MotivoNotaDebitoSeeder::class,
         ]);
-        $tenant = Tenant::create([
-            'name' => 'Demo Tenant',
-            'slug' => 'demo-tenant',
-            'active' => true,
-        ]);
 
-        $empresa = Empresa::create([
-            'tenant_id' => $tenant->id,
-            'nombre' => 'Botica Demo',
-            'ruc' => '20456789012',
-            'direccion' => 'Av. Peru 123, Lima',
-            'active' => true,
-        ]);
+        $tenant = Tenant::updateOrCreate(
+            ['slug' => 'demo-tenant'],
+            ['name' => 'Demo Tenant', 'active' => true]
+        );
+
+        $empresa = Empresa::updateOrCreate(
+            ['ruc' => '20161515648'],
+            [
+                'tenant_id' => $tenant->id,
+                'nombre' => 'BOTICA DEMO SAC',
+                'direccion' => 'AV. DEMO 123, LIMA',
+                'active' => true,
+            ]
+        );
 
         $tiendas = $this->crearTiendas($tenant, $empresa);
         $tiendaPrincipal = $tiendas->first();
 
-        $this->crearSeriesComprobantes($tenant, $empresa, $tiendas);
-        $this->crearCatalogosDemo($tenant, $empresa);
+        $this->crearCatalogos($tenant, $empresa);
         $this->crearProductoConfiguracion($tenant, $empresa);
+        $this->crearClientes($tenant, $empresa);
 
         $permissions = $this->crearPermisos();
         $roles = $this->crearRoles($empresa, $permissions);
+        $this->crearUsuarios($tenant, $empresa, $tiendas, $roles);
 
-        $admin = User::create([
-            'tenant_id' => $tenant->id,
-            'empresa_id' => $empresa->id,
-            'tienda_activa_id' => $tiendaPrincipal->id,
-            'role_id' => $roles['Administrador']->id,
-            'name' => 'Administrador Demo',
-            'email' => 'admin@botica.demo',
-            'password' => Hash::make('password123'),
-            'email_verified_at' => now(),
+        $this->call([
+            ComprobantesPermissionsSeeder::class,
+            SeriesComprobantesSeeder::class,
         ]);
 
-        $this->asignarTiendas($admin, $tiendas, $tenant->id, $empresa->id);
-
-        $cajero = User::create([
-            'tenant_id' => $tenant->id,
-            'empresa_id' => $empresa->id,
-            'tienda_activa_id' => null,
-            'role_id' => $roles['Cajero']->id,
-            'name' => 'Cajero Multi Tienda',
-            'email' => 'cajero@botica.demo',
-            'password' => Hash::make('password123'),
-            'email_verified_at' => now(),
-        ]);
-
-        $this->asignarTiendas($cajero, $tiendas->take(2), $tenant->id, $empresa->id);
-
-        $almacenero = User::create([
-            'tenant_id' => $tenant->id,
-            'empresa_id' => $empresa->id,
-            'tienda_activa_id' => null,
-            'role_id' => $roles['Almacenero']->id,
-            'name' => 'Almacenero Multi Tienda',
-            'email' => 'almacen@botica.demo',
-            'password' => Hash::make('password123'),
-            'email_verified_at' => now(),
-        ]);
-
-        $this->asignarTiendas($almacenero, $tiendas, $tenant->id, $empresa->id);
-
-        $supervisor = User::create([
-            'tenant_id' => $tenant->id,
-            'empresa_id' => $empresa->id,
-            'tienda_activa_id' => $tiendaPrincipal->id,
-            'role_id' => $roles['Supervisor']->id,
-            'name' => 'Supervisor Demo',
-            'email' => 'supervisor@botica.demo',
-            'password' => Hash::make('password123'),
-            'email_verified_at' => now(),
-        ]);
-
-        $this->asignarTiendas($supervisor, $tiendas, $tenant->id, $empresa->id);
+        $this->syncAdminAllPermissions($empresa);
+        $this->crearProductosDemo($tenant, $empresa, $tiendas);
     }
 
     private function crearTiendas(Tenant $tenant, Empresa $empresa): Collection
     {
         return collect([
-            [
-                'nombre' => 'Botica Principal',
-                'codigo' => 'BOT-001',
-                'direccion' => 'Av. Peru 123, Lima',
-                'ubigeo' => '150101',
-            ],
-            [
-                'nombre' => 'Botica Norte',
-                'codigo' => 'BOT-002',
-                'direccion' => 'Av. Los Olivos 456, Lima',
-                'ubigeo' => '150117',
-            ],
-            [
-                'nombre' => 'Botica Sur',
-                'codigo' => 'BOT-003',
-                'direccion' => 'Av. San Juan 789, Lima',
-                'ubigeo' => '150132',
-            ],
-        ])->map(fn (array $tienda) => Tienda::create([
-            'tenant_id' => $tenant->id,
-            'empresa_id' => $empresa->id,
-            'nombre' => $tienda['nombre'],
-            'codigo' => $tienda['codigo'],
-            'direccion' => $tienda['direccion'],
-            'ubigeo' => $tienda['ubigeo'] ?? null,
-            'estado' => true,
-        ]));
-    }
-
-    private function crearSeriesComprobantes(Tenant $tenant, Empresa $empresa, Collection $tiendas): void
-    {
-        $series = [
-            ['tipo_comprobante' => 'NOTA_VENTA', 'serie' => 'NV01'],
-            ['tipo_comprobante' => 'BOLETA', 'serie' => 'B001'],
-            ['tipo_comprobante' => 'FACTURA', 'serie' => 'F001'],
-            ['tipo_comprobante' => 'NOTA_CREDITO', 'serie' => 'FC01'],
-            ['tipo_comprobante' => 'NOTA_DEBITO', 'serie' => 'FD01'],
-            ['tipo_comprobante' => 'GUIA_REMISION', 'serie' => 'T001'],
-        ];
-
-        $tiendas->each(function (Tienda $tienda) use ($tenant, $empresa, $series) {
-            foreach ($series as $serie) {
-                SerieComprobante::create([
+            ['nombre' => 'Botica Principal', 'codigo' => 'BOT-001', 'direccion' => 'AV. DEMO 123', 'ubigeo' => '150101'],
+            ['nombre' => 'Botica Norte', 'codigo' => 'BOT-002', 'direccion' => 'AV. LOS OLIVOS 456', 'ubigeo' => '150117'],
+            ['nombre' => 'Botica Sur', 'codigo' => 'BOT-003', 'direccion' => 'AV. SAN JUAN 789', 'ubigeo' => '150132'],
+        ])->map(function (array $data) use ($tenant, $empresa) {
+            $tienda = Tienda::updateOrCreate(
+                ['empresa_id' => $empresa->id, 'codigo' => $data['codigo']],
+                [
                     'tenant_id' => $tenant->id,
-                    'empresa_id' => $empresa->id,
-                    'tienda_id' => $tienda->id,
-                    'tipo_comprobante' => $serie['tipo_comprobante'],
-                    'serie' => $serie['serie'],
-                    'correlativo_actual' => 0,
+                    'nombre' => $data['nombre'],
+                    'direccion' => $data['direccion'],
                     'estado' => true,
-                ]);
+                ]
+            );
+
+            if (Schema::hasColumn('tiendas', 'ubigeo')) {
+                $tienda->forceFill(['ubigeo' => $data['ubigeo']])->save();
             }
+
+            return $tienda;
         });
     }
 
-    private function crearCatalogosDemo(Tenant $tenant, Empresa $empresa): void
+    private function crearCatalogos(Tenant $tenant, Empresa $empresa): void
     {
-        $base = [
-            'tenant_id' => $tenant->id,
-            'empresa_id' => $empresa->id,
-            'estado' => true,
-        ];
+        $base = ['tenant_id' => $tenant->id, 'empresa_id' => $empresa->id, 'estado' => true];
+
+        $this->upsertCatalogo(Categoria::class, $base, [
+            ['nombre' => 'Analgesicos', 'descripcion' => 'Medicamentos para dolor y fiebre'],
+            ['nombre' => 'Antibioticos', 'descripcion' => 'Medicamentos antimicrobianos'],
+            ['nombre' => 'Antigripales', 'descripcion' => 'Productos para resfrio y gripe'],
+            ['nombre' => 'Gastrointestinales', 'descripcion' => 'Tratamientos digestivos'],
+            ['nombre' => 'Material medico', 'descripcion' => 'Insumos y dispositivos medicos'],
+        ]);
+
+        $this->upsertCatalogo(Marca::class, $base, [
+            ['nombre' => 'Generico', 'descripcion' => 'Producto sin marca comercial'],
+            ['nombre' => 'Panadol', 'descripcion' => 'Marca de analgesicos'],
+            ['nombre' => 'Bayer', 'descripcion' => 'Laboratorio y marca internacional'],
+        ]);
+
+        $this->upsertCatalogo(Laboratorio::class, $base, [
+            ['nombre' => 'Medifarma', 'descripcion' => 'Laboratorio farmaceutico peruano'],
+            ['nombre' => 'Portugal', 'descripcion' => 'Laboratorio de productos farmaceuticos'],
+            ['nombre' => 'Bayer', 'descripcion' => 'Laboratorio internacional'],
+        ]);
+
+        $this->upsertCatalogo(PrincipioActivo::class, $base, [
+            ['nombre' => 'Paracetamol', 'descripcion' => 'Analgesico y antipiretico'],
+            ['nombre' => 'Ibuprofeno', 'descripcion' => 'Antiinflamatorio no esteroideo'],
+            ['nombre' => 'Amoxicilina', 'descripcion' => 'Antibiotico betalactamico'],
+        ]);
+
+        $this->upsertCatalogo(AccionTerapeutica::class, $base, [
+            ['nombre' => 'Analgesico', 'descripcion' => 'Alivio del dolor'],
+            ['nombre' => 'Antibiotico', 'descripcion' => 'Tratamiento de infecciones bacterianas'],
+            ['nombre' => 'Antiinflamatorio', 'descripcion' => 'Reduce inflamacion'],
+        ]);
 
         foreach ([
-            ['nombre' => 'AnalgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sicos', 'descripcion' => 'Medicamentos para aliviar el dolor.'],
-            ['nombre' => 'AntibiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³ticos', 'descripcion' => 'Medicamentos antimicrobianos bajo control.'],
-            ['nombre' => 'Antigripales', 'descripcion' => 'Productos para sÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ntomas de resfrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­o y gripe.'],
-            ['nombre' => 'Gastrointestinales', 'descripcion' => 'Tratamientos para el sistema digestivo.'],
-            ['nombre' => 'DermatolÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³gicos', 'descripcion' => 'Cremas, ungÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼entos y tratamientos de piel.'],
-            ['nombre' => 'Vitaminas y suplementos', 'descripcion' => 'Suplementos nutricionales y vitamÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nicos.'],
-            ['nombre' => 'Cuidado personal', 'descripcion' => 'Productos de higiene y cuidado diario.'],
-            ['nombre' => 'Material mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©dico', 'descripcion' => 'Insumos y dispositivos de uso mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©dico.'],
+            ['nombre' => 'Unidad', 'abreviatura' => 'UND', 'codigo_sunat' => 'NIU'],
+            ['nombre' => 'Caja', 'abreviatura' => 'CAJ', 'codigo_sunat' => 'BX'],
+            ['nombre' => 'Blister', 'abreviatura' => 'BLI', 'codigo_sunat' => 'NIU'],
+            ['nombre' => 'Frasco', 'abreviatura' => 'FCO', 'codigo_sunat' => 'NIU'],
         ] as $item) {
-            Categoria::create(array_merge($base, $item));
+            $unidad = UnidadMedida::updateOrCreate(
+                ['empresa_id' => $empresa->id, 'nombre' => $item['nombre']],
+                array_merge($base, ['abreviatura' => $item['abreviatura']])
+            );
+
+            if (Schema::hasColumn('unidades_medida', 'codigo_sunat')) {
+                $unidad->forceFill(['codigo_sunat' => $item['codigo_sunat']])->save();
+            }
         }
+    }
 
-        foreach ([
-            ['nombre' => 'GenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rico', 'descripcion' => 'Producto sin marca comercial especÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­fica.'],
-            ['nombre' => 'Panadol', 'descripcion' => 'Marca comercial de analgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sicos.'],
-            ['nombre' => 'Apronax', 'descripcion' => 'Marca comercial de antiinflamatorios.'],
-            ['nombre' => 'Dolocordralan', 'descripcion' => 'Marca comercial farmacÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©utica.'],
-            ['nombre' => 'Bismutol', 'descripcion' => 'Marca comercial gastrointestinal.'],
-            ['nombre' => 'Vick', 'descripcion' => 'Marca de productos respiratorios.'],
-            ['nombre' => 'Ensure', 'descripcion' => 'Marca de suplementos nutricionales.'],
-            ['nombre' => 'Nivea', 'descripcion' => 'Marca de cuidado personal.'],
-        ] as $item) {
-            Marca::create(array_merge($base, $item));
-        }
-
-        foreach ([
-            ['nombre' => 'Medifarma', 'descripcion' => 'Laboratorio farmacÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©utico peruano.'],
-            ['nombre' => 'Portugal', 'descripcion' => 'Laboratorio de productos farmacÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©uticos.'],
-            ['nombre' => 'Hersil', 'descripcion' => 'Laboratorio peruano de medicamentos.'],
-            ['nombre' => 'Farmindustria', 'descripcion' => 'Laboratorio farmacÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©utico nacional.'],
-            ['nombre' => 'Bayer', 'descripcion' => 'Laboratorio multinacional.'],
-            ['nombre' => 'Pfizer', 'descripcion' => 'Laboratorio multinacional.'],
-            ['nombre' => 'GlaxoSmithKline', 'descripcion' => 'Laboratorio multinacional.'],
-            ['nombre' => 'Abbott', 'descripcion' => 'Laboratorio de medicamentos y nutriciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n.'],
-        ] as $item) {
-            Laboratorio::create(array_merge($base, $item));
-        }
-
-        foreach ([
-            ['nombre' => 'Paracetamol', 'descripcion' => 'AnalgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sico y antipirÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©tico.'],
-            ['nombre' => 'Ibuprofeno', 'descripcion' => 'Antiinflamatorio no esteroideo.'],
-            ['nombre' => 'Naproxeno', 'descripcion' => 'Antiinflamatorio y analgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sico.'],
-            ['nombre' => 'Amoxicilina', 'descripcion' => 'AntibiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³tico betalactÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡mico.'],
-            ['nombre' => 'Azitromicina', 'descripcion' => 'AntibiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³tico macrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³lido.'],
-            ['nombre' => 'Loratadina', 'descripcion' => 'AntihistamÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nico.'],
-            ['nombre' => 'Omeprazol', 'descripcion' => 'Inhibidor de bomba de protones.'],
-            ['nombre' => 'Clotrimazol', 'descripcion' => 'AntimicÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³tico.'],
-        ] as $item) {
-            PrincipioActivo::create(array_merge($base, $item));
-        }
-
-        foreach ([
-            ['nombre' => 'AnalgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sico', 'descripcion' => 'Alivio del dolor.'],
-            ['nombre' => 'AntipirÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©tico', 'descripcion' => 'ReducciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n de fiebre.'],
-            ['nombre' => 'Antiinflamatorio', 'descripcion' => 'ReducciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n de inflamaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n.'],
-            ['nombre' => 'Antibacteriano', 'descripcion' => 'Tratamiento de infecciones bacterianas.'],
-            ['nombre' => 'AntihistamÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nico', 'descripcion' => 'Alivio de alergias.'],
-            ['nombre' => 'AntiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡cido', 'descripcion' => 'Tratamiento de acidez gÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡strica.'],
-            ['nombre' => 'AntimicÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³tico', 'descripcion' => 'Tratamiento de hongos.'],
-            ['nombre' => 'Suplemento nutricional', 'descripcion' => 'Apoyo nutricional y vitamÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nico.'],
-        ] as $item) {
-            AccionTerapeutica::create(array_merge($base, $item));
-        }
-
-        foreach ([
-            ['nombre' => 'Unidad', 'abreviatura' => 'UND'],
-            ['nombre' => 'Caja', 'abreviatura' => 'CAJ'],
-            ['nombre' => 'BlÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ster', 'abreviatura' => 'BLI'],
-            ['nombre' => 'Frasco', 'abreviatura' => 'FCO'],
-            ['nombre' => 'Tubo', 'abreviatura' => 'TUB'],
-            ['nombre' => 'Sobre', 'abreviatura' => 'SOB'],
-            ['nombre' => 'Ampolla', 'abreviatura' => 'AMP'],
-            ['nombre' => 'Tableta', 'abreviatura' => 'TAB'],
-        ] as $item) {
-            UnidadMedida::create(array_merge($base, $item));
+    private function upsertCatalogo(string $modelClass, array $base, array $items): void
+    {
+        foreach ($items as $item) {
+            $modelClass::updateOrCreate(
+                ['empresa_id' => $base['empresa_id'], 'nombre' => $item['nombre']],
+                array_merge($base, $item)
+            );
         }
     }
 
     private function crearProductoConfiguracion(Tenant $tenant, Empresa $empresa): void
     {
-        ProductoConfiguracion::create([
-            'tenant_id' => $tenant->id,
-            'empresa_id' => $empresa->id,
-            'autogenerar_codigo_interno' => true,
-            'prefijo_codigo_interno' => 'PROD',
-            'ultimo_correlativo_codigo_interno' => 0,
-            'autogenerar_codigo_barra' => true,
-            'prefijo_codigo_barra' => 'BOT',
-            'ultimo_correlativo_codigo_barra' => 0,
-            'estado' => true,
-        ]);
+        ProductoConfiguracion::updateOrCreate(
+            ['empresa_id' => $empresa->id],
+            [
+                'tenant_id' => $tenant->id,
+                'autogenerar_codigo_interno' => true,
+                'prefijo_codigo_interno' => 'PROD',
+                'ultimo_correlativo_codigo_interno' => 0,
+                'autogenerar_codigo_barra' => true,
+                'prefijo_codigo_barra' => 'BOT',
+                'ultimo_correlativo_codigo_barra' => 0,
+                'estado' => true,
+            ]
+        );
+    }
+
+    private function crearClientes(Tenant $tenant, Empresa $empresa): void
+    {
+        foreach ([
+            ['tipo_documento' => 'SIN_DOCUMENTO', 'numero_documento' => '00000000', 'nombres' => 'Clientes varios', 'razon_social' => null, 'direccion' => null],
+            ['tipo_documento' => 'DNI', 'numero_documento' => '12345678', 'nombres' => 'Juan Cliente', 'razon_social' => null, 'direccion' => 'AV. CLIENTE 123'],
+            ['tipo_documento' => 'RUC', 'numero_documento' => '20123456789', 'nombres' => 'BOTICA DESTINO SAC', 'razon_social' => 'BOTICA DESTINO SAC', 'direccion' => 'AV. DESTINO 456'],
+        ] as $cliente) {
+            Cliente::updateOrCreate(
+                ['empresa_id' => $empresa->id, 'numero_documento' => $cliente['numero_documento']],
+                array_merge($cliente, ['tenant_id' => $tenant->id, 'empresa_id' => $empresa->id, 'estado' => true])
+            );
+        }
+    }
+
+    private function crearProductosDemo(Tenant $tenant, Empresa $empresa, Collection $tiendas): void
+    {
+        $categoria = Categoria::where('empresa_id', $empresa->id)->where('nombre', 'Analgesicos')->first();
+        $marca = Marca::where('empresa_id', $empresa->id)->where('nombre', 'Generico')->first();
+        $laboratorio = Laboratorio::where('empresa_id', $empresa->id)->where('nombre', 'Medifarma')->first();
+        $accion = AccionTerapeutica::where('empresa_id', $empresa->id)->where('nombre', 'Analgesico')->first();
+        $principioParacetamol = PrincipioActivo::where('empresa_id', $empresa->id)->where('nombre', 'Paracetamol')->first();
+        $principioAmoxicilina = PrincipioActivo::where('empresa_id', $empresa->id)->where('nombre', 'Amoxicilina')->first();
+        $afectacion = AfectacionIgv::where('codigo', '10')->first();
+        $unidad = UnidadMedida::where('empresa_id', $empresa->id)->where('nombre', 'Unidad')->first();
+        $caja = UnidadMedida::where('empresa_id', $empresa->id)->where('nombre', 'Caja')->first();
+
+        if (! $categoria || ! $unidad || ! $caja) {
+            return;
+        }
+
+        $paracetamol = Producto::updateOrCreate(
+            ['empresa_id' => $empresa->id, 'codigo_interno' => 'PROD000001'],
+            [
+                'tenant_id' => $tenant->id,
+                'categoria_id' => $categoria->id,
+                'marca_id' => $marca?->id,
+                'laboratorio_id' => $laboratorio?->id,
+                'principio_activo_id' => $principioParacetamol?->id,
+                'accion_terapeutica_id' => $accion?->id,
+                'afectacion_igv_id' => $afectacion?->id,
+                'nombre' => 'Paracetamol 500mg',
+                'descripcion' => 'Tableta analgesica y antipiretica',
+                'concentracion' => '500mg',
+                'requiere_receta' => false,
+                'maneja_lote' => false,
+                'maneja_vencimiento' => false,
+                'afecto_igv' => true,
+                'estado' => true,
+            ]
+        );
+
+        $amoxicilina = Producto::updateOrCreate(
+            ['empresa_id' => $empresa->id, 'codigo_interno' => 'PROD000002'],
+            [
+                'tenant_id' => $tenant->id,
+                'categoria_id' => Categoria::where('empresa_id', $empresa->id)->where('nombre', 'Antibioticos')->value('id') ?? $categoria->id,
+                'marca_id' => $marca?->id,
+                'laboratorio_id' => $laboratorio?->id,
+                'principio_activo_id' => $principioAmoxicilina?->id,
+                'accion_terapeutica_id' => AccionTerapeutica::where('empresa_id', $empresa->id)->where('nombre', 'Antibiotico')->value('id') ?? $accion?->id,
+                'afectacion_igv_id' => $afectacion?->id,
+                'nombre' => 'Amoxicilina 500mg',
+                'descripcion' => 'Capsula antibiotica',
+                'concentracion' => '500mg',
+                'requiere_receta' => true,
+                'maneja_lote' => true,
+                'maneja_vencimiento' => true,
+                'afecto_igv' => true,
+                'estado' => true,
+            ]
+        );
+
+        $this->syncPrincipios($paracetamol, [$principioParacetamol?->id]);
+        $this->syncPrincipios($amoxicilina, [$principioAmoxicilina?->id]);
+
+        $paracetamolUnidad = $this->crearPresentacion($tenant, $empresa, $paracetamol, $unidad, 'Unidad', '7750000000011', 1, 0.30, 1.00, true);
+        $this->crearPresentacion($tenant, $empresa, $paracetamol, $caja, 'Caja x 50', '7750000000012', 50, 15.00, 48.00, false);
+        $amoxicilinaUnidad = $this->crearPresentacion($tenant, $empresa, $amoxicilina, $unidad, 'Unidad', '7750000000021', 1, 0.80, 2.50, true);
+        $this->crearPresentacion($tenant, $empresa, $amoxicilina, $caja, 'Caja x 100', '7750000000022', 100, 80.00, 220.00, false);
+
+        foreach ($tiendas as $tienda) {
+            $this->crearStock($tenant, $empresa, $tienda, $paracetamol, null, 500, 20, 2000);
+
+            $lote = Lote::updateOrCreate(
+                ['empresa_id' => $empresa->id, 'producto_id' => $amoxicilina->id, 'codigo_lote' => 'AMX-LOTE-001'],
+                [
+                    'tenant_id' => $tenant->id,
+                    'fecha_vencimiento' => now()->addYear()->toDateString(),
+                    'estado' => true,
+                ]
+            );
+
+            $this->crearStock($tenant, $empresa, $tienda, $amoxicilina, $lote, 300, 10, 1000);
+        }
+
+        unset($paracetamolUnidad, $amoxicilinaUnidad);
+    }
+
+    private function crearPresentacion(Tenant $tenant, Empresa $empresa, Producto $producto, UnidadMedida $unidad, string $nombre, string $codigoBarra, float $factor, float $compra, float $venta, bool $principal): ProductoPresentacion
+    {
+        return ProductoPresentacion::updateOrCreate(
+            ['empresa_id' => $empresa->id, 'codigo_barra' => $codigoBarra],
+            [
+                'tenant_id' => $tenant->id,
+                'producto_id' => $producto->id,
+                'unidad_medida_id' => $unidad->id,
+                'nombre' => $nombre,
+                'factor_conversion' => $factor,
+                'precio_compra' => $compra,
+                'precio_venta' => $venta,
+                'es_principal' => $principal,
+                'estado' => true,
+            ]
+        );
+    }
+
+    private function crearStock(Tenant $tenant, Empresa $empresa, Tienda $tienda, Producto $producto, ?Lote $lote, float $cantidad, float $minima, float $maxima): void
+    {
+        Stock::updateOrCreate(
+            ['empresa_id' => $empresa->id, 'tienda_id' => $tienda->id, 'producto_id' => $producto->id, 'lote_id' => $lote?->id],
+            [
+                'tenant_id' => $tenant->id,
+                'cantidad_actual' => $cantidad,
+                'cantidad_minima' => $minima,
+                'cantidad_maxima' => $maxima,
+                'estado' => true,
+            ]
+        );
+    }
+
+    private function syncPrincipios(Producto $producto, array $principioIds): void
+    {
+        $principioIds = array_values(array_filter($principioIds));
+
+        if (! Schema::hasTable('producto_principio_activo') || empty($principioIds)) {
+            return;
+        }
+
+        $sync = [];
+        foreach ($principioIds as $id) {
+            $sync[$id] = ['tenant_id' => $producto->tenant_id, 'empresa_id' => $producto->empresa_id];
+        }
+
+        $producto->principiosActivos()->sync($sync);
     }
 
     private function crearPermisos(): Collection
     {
-        return collect([
-            ['name' => 'dashboard.ver', 'label' => 'Ver dashboard', 'description' => 'Acceder al panel principal'],
+        $permissions = [
+            'dashboard.ver' => 'Ver dashboard',
+            'productos.ver' => 'Ver productos', 'productos.crear' => 'Crear productos', 'productos.editar' => 'Editar productos', 'productos.eliminar' => 'Eliminar productos',
+            'categorias.ver' => 'Ver categorias', 'categorias.crear' => 'Crear categorias', 'categorias.editar' => 'Editar categorias', 'categorias.eliminar' => 'Eliminar categorias',
+            'marcas.ver' => 'Ver marcas', 'marcas.crear' => 'Crear marcas', 'marcas.editar' => 'Editar marcas', 'marcas.eliminar' => 'Eliminar marcas',
+            'laboratorios.ver' => 'Ver laboratorios', 'laboratorios.crear' => 'Crear laboratorios', 'laboratorios.editar' => 'Editar laboratorios', 'laboratorios.eliminar' => 'Eliminar laboratorios',
+            'principios_activos.ver' => 'Ver principios activos', 'principios_activos.crear' => 'Crear principios activos', 'principios_activos.editar' => 'Editar principios activos', 'principios_activos.eliminar' => 'Eliminar principios activos',
+            'acciones_terapeuticas.ver' => 'Ver acciones terapeuticas', 'acciones_terapeuticas.crear' => 'Crear acciones terapeuticas', 'acciones_terapeuticas.editar' => 'Editar acciones terapeuticas', 'acciones_terapeuticas.eliminar' => 'Eliminar acciones terapeuticas',
+            'unidades_medida.ver' => 'Ver unidades de medida', 'unidades_medida.crear' => 'Crear unidades de medida', 'unidades_medida.editar' => 'Editar unidades de medida', 'unidades_medida.eliminar' => 'Eliminar unidades de medida',
+            'ventas.ver' => 'Ver ventas', 'ventas.crear' => 'Crear ventas', 'ventas.imprimir' => 'Imprimir ventas', 'ventas.exportar' => 'Exportar ventas',
+            'caja.ver' => 'Ver caja', 'caja.aperturar' => 'Aperturar caja', 'caja.cerrar' => 'Cerrar caja', 'caja.ingreso' => 'Registrar ingresos de caja', 'caja.egreso' => 'Registrar egresos de caja', 'caja.historial' => 'Ver historial de caja',
+            'compras.ver' => 'Ver compras', 'compras.crear' => 'Crear compras',
+            'inventario.ver' => 'Ver inventario', 'inventario.entrada' => 'Entrada de inventario', 'inventario.salida' => 'Salida de inventario', 'inventario.ajuste' => 'Ajuste de inventario', 'inventario.kardex' => 'Ver kardex',
+            'lotes.ver' => 'Ver lotes', 'lotes.crear' => 'Crear lotes', 'lotes.editar' => 'Editar lotes', 'lotes.eliminar' => 'Eliminar lotes',
+            'reportes.ver' => 'Ver reportes',
+            'sunat.ver' => 'Ver SUNAT', 'sunat.configuracion.ver' => 'Ver configuracion SUNAT', 'sunat.configuracion.crear' => 'Crear configuracion SUNAT', 'sunat.configuracion.editar' => 'Editar configuracion SUNAT', 'sunat.configuracion.eliminar' => 'Eliminar configuracion SUNAT',
+            'sunat.comprobantes.ver' => 'Ver comprobantes electronicos', 'sunat.comprobantes.emitir' => 'Emitir comprobantes electronicos', 'sunat.comprobantes.reenviar' => 'Reenviar comprobantes electronicos', 'sunat.documentos.descargar' => 'Descargar documentos SUNAT',
+            'sunat.notas.ver' => 'Ver notas electronicas', 'sunat.notas.crear' => 'Crear notas electronicas',
+            'notas_credito.ver' => 'Ver notas de credito', 'notas_credito.crear' => 'Crear notas de credito', 'notas_credito.enviar_sunat' => 'Enviar notas de credito', 'notas_credito.reenviar_sunat' => 'Reenviar notas de credito', 'notas_credito.descargar_xml' => 'Descargar XML de notas de credito', 'notas_credito.descargar_cdr' => 'Descargar CDR de notas de credito', 'notas_credito.xml.descargar' => 'Descargar XML de notas de credito', 'notas_credito.cdr.descargar' => 'Descargar CDR de notas de credito', 'notas_credito.pdf.generar' => 'Generar PDF de notas de credito', 'notas_credito.pdf.descargar' => 'Descargar PDF de notas de credito', 'notas_credito.ticket.generar' => 'Generar ticket de notas de credito', 'notas_credito.ticket.descargar' => 'Descargar ticket de notas de credito',
+            'notas_debito.ver' => 'Ver notas de debito', 'notas_debito.crear' => 'Crear notas de debito', 'notas_debito.enviar_sunat' => 'Enviar notas de debito', 'notas_debito.reenviar_sunat' => 'Reenviar notas de debito', 'notas_debito.descargar_xml' => 'Descargar XML de notas de debito', 'notas_debito.descargar_cdr' => 'Descargar CDR de notas de debito', 'notas_debito.xml.descargar' => 'Descargar XML de notas de debito', 'notas_debito.cdr.descargar' => 'Descargar CDR de notas de debito', 'notas_debito.pdf.generar' => 'Generar PDF de notas de debito', 'notas_debito.pdf.descargar' => 'Descargar PDF de notas de debito', 'notas_debito.ticket.generar' => 'Generar ticket de notas de debito', 'notas_debito.ticket.descargar' => 'Descargar ticket de notas de debito',
+            'sunat.resumenes.ver' => 'Ver resumenes diarios', 'sunat.resumenes.generar' => 'Generar resumenes diarios', 'sunat.bajas.ver' => 'Ver comunicaciones de baja', 'sunat.bajas.generar' => 'Generar comunicaciones de baja',
+            'sunat.guias.ver' => 'Ver guias de remision', 'sunat.guias.crear' => 'Crear guias de remision',
+            'guias.crear' => 'Crear guias de remision', 'guias.enviar_sunat' => 'Enviar guias a SUNAT', 'guias.reenviar_sunat' => 'Reenviar guias a SUNAT', 'guias.descargar_xml' => 'Descargar XML de guias', 'guias.descargar_cdr' => 'Descargar CDR de guias', 'guias.pdf.generar' => 'Generar PDF de guias', 'guias.pdf.descargar' => 'Descargar PDF de guias', 'guias.ticket.generar' => 'Generar ticket de guias', 'guias.ticket.descargar' => 'Descargar ticket de guias',
+            'comprobantes.notas_venta.ver' => 'Ver notas de venta',
+        ];
 
-            ['name' => 'productos.ver', 'label' => 'Ver productos', 'description' => 'Visualizar listado de productos'],
-            ['name' => 'productos.crear', 'label' => 'Crear productos', 'description' => 'Registrar productos nuevos'],
-            ['name' => 'productos.editar', 'label' => 'Editar productos', 'description' => 'Modificar datos de productos'],
-            ['name' => 'productos.eliminar', 'label' => 'Eliminar productos', 'description' => 'Eliminar productos del catalogo'],
-
-            ['name' => 'categorias.ver', 'label' => 'Ver categorias', 'description' => 'Visualizar categorias'],
-            ['name' => 'categorias.crear', 'label' => 'Crear categorias', 'description' => 'Registrar categorias'],
-            ['name' => 'categorias.editar', 'label' => 'Editar categorias', 'description' => 'Modificar categorias'],
-            ['name' => 'categorias.eliminar', 'label' => 'Eliminar categorias', 'description' => 'Desactivar categorias'],
-
-            ['name' => 'marcas.ver', 'label' => 'Ver marcas', 'description' => 'Visualizar marcas'],
-            ['name' => 'marcas.crear', 'label' => 'Crear marcas', 'description' => 'Registrar marcas'],
-            ['name' => 'marcas.editar', 'label' => 'Editar marcas', 'description' => 'Modificar marcas'],
-            ['name' => 'marcas.eliminar', 'label' => 'Eliminar marcas', 'description' => 'Desactivar marcas'],
-
-            ['name' => 'laboratorios.ver', 'label' => 'Ver laboratorios', 'description' => 'Visualizar laboratorios'],
-            ['name' => 'laboratorios.crear', 'label' => 'Crear laboratorios', 'description' => 'Registrar laboratorios'],
-            ['name' => 'laboratorios.editar', 'label' => 'Editar laboratorios', 'description' => 'Modificar laboratorios'],
-            ['name' => 'laboratorios.eliminar', 'label' => 'Eliminar laboratorios', 'description' => 'Desactivar laboratorios'],
-
-            ['name' => 'principios_activos.ver', 'label' => 'Ver principios activos', 'description' => 'Visualizar principios activos'],
-            ['name' => 'principios_activos.crear', 'label' => 'Crear principios activos', 'description' => 'Registrar principios activos'],
-            ['name' => 'principios_activos.editar', 'label' => 'Editar principios activos', 'description' => 'Modificar principios activos'],
-            ['name' => 'principios_activos.eliminar', 'label' => 'Eliminar principios activos', 'description' => 'Desactivar principios activos'],
-
-            ['name' => 'acciones_terapeuticas.ver', 'label' => 'Ver acciones terapeuticas', 'description' => 'Visualizar acciones terapeuticas'],
-            ['name' => 'acciones_terapeuticas.crear', 'label' => 'Crear acciones terapeuticas', 'description' => 'Registrar acciones terapeuticas'],
-            ['name' => 'acciones_terapeuticas.editar', 'label' => 'Editar acciones terapeuticas', 'description' => 'Modificar acciones terapeuticas'],
-            ['name' => 'acciones_terapeuticas.eliminar', 'label' => 'Eliminar acciones terapeuticas', 'description' => 'Desactivar acciones terapeuticas'],
-
-            ['name' => 'unidades_medida.ver', 'label' => 'Ver unidades de medida', 'description' => 'Visualizar unidades de medida'],
-            ['name' => 'unidades_medida.crear', 'label' => 'Crear unidades de medida', 'description' => 'Registrar unidades de medida'],
-            ['name' => 'unidades_medida.editar', 'label' => 'Editar unidades de medida', 'description' => 'Modificar unidades de medida'],
-            ['name' => 'unidades_medida.eliminar', 'label' => 'Eliminar unidades de medida', 'description' => 'Desactivar unidades de medida'],
-
-            ['name' => 'ventas.ver', 'label' => 'Ver ventas', 'description' => 'Visualizar operaciones de venta'],
-            ['name' => 'ventas.crear', 'label' => 'Crear ventas', 'description' => 'Registrar ventas en el sistema'],
-            ['name' => 'ventas.imprimir', 'label' => 'Imprimir ventas', 'description' => 'Imprimir tickets de venta'],
-            ['name' => 'ventas.exportar', 'label' => 'Exportar ventas', 'description' => 'Descargar PDF de ventas'],
-            ['name' => 'guias.crear', 'label' => 'Crear guias de remision', 'description' => 'Crear guias de remision desde ventas o manualmente'],
-            ['name' => 'guias.enviar_sunat', 'label' => 'Enviar guias a SUNAT', 'description' => 'Enviar guias de remision a SUNAT'],
-            ['name' => 'guias.reenviar_sunat', 'label' => 'Reenviar guias a SUNAT', 'description' => 'Reintentar envio SUNAT de guias'],
-            ['name' => 'guias.descargar_xml', 'label' => 'Descargar XML de guias', 'description' => 'Descargar XML privado de guias'],
-            ['name' => 'guias.descargar_cdr', 'label' => 'Descargar CDR de guias', 'description' => 'Descargar CDR privado de guias'],
-            ['name' => 'guias.pdf.generar', 'label' => 'Generar PDF de guias', 'description' => 'Generar PDF A4 privado de guias de remision'],
-            ['name' => 'guias.pdf.descargar', 'label' => 'Descargar PDF de guias', 'description' => 'Descargar PDF A4 privado de guias de remision'],
-            ['name' => 'guias.ticket.generar', 'label' => 'Generar ticket de guias', 'description' => 'Generar ticket 80mm privado de guias de remision'],
-            ['name' => 'guias.ticket.descargar', 'label' => 'Descargar ticket de guias', 'description' => 'Descargar ticket 80mm privado de guias de remision'],
-            ['name' => 'caja.ver', 'label' => 'Ver caja', 'description' => 'Acceder al estado de caja'],
-            ['name' => 'caja.aperturar', 'label' => 'Aperturar caja', 'description' => 'Abrir caja para el dia'],
-            ['name' => 'caja.cerrar', 'label' => 'Cerrar caja', 'description' => 'Cerrar caja al final del turno'],
-            ['name' => 'caja.ingreso', 'label' => 'Registrar ingresos de caja', 'description' => 'Registrar ingresos manuales en caja'],
-            ['name' => 'caja.egreso', 'label' => 'Registrar egresos de caja', 'description' => 'Registrar egresos manuales en caja'],
-            ['name' => 'caja.historial', 'label' => 'Ver historial de caja', 'description' => 'Consultar historial de aperturas y cierres'],
-
-            ['name' => 'compras.ver', 'label' => 'Ver compras', 'description' => 'Visualizar compras y ordenes'],
-            ['name' => 'compras.crear', 'label' => 'Crear compras', 'description' => 'Registrar compras de insumos'],
-
-            ['name' => 'inventario.ver', 'label' => 'Ver inventario', 'description' => 'Consultar stock actual'],
-            ['name' => 'inventario.entrada', 'label' => 'Entrada de inventario', 'description' => 'Registrar entradas de stock'],
-            ['name' => 'inventario.salida', 'label' => 'Salida de inventario', 'description' => 'Registrar salidas de stock'],
-            ['name' => 'inventario.ajuste', 'label' => 'Ajuste de inventario', 'description' => 'Registrar ajustes de stock'],
-            ['name' => 'inventario.kardex', 'label' => 'Ver kardex', 'description' => 'Consultar kardex de productos'],
-            ['name' => 'lotes.ver', 'label' => 'Ver lotes', 'description' => 'Visualizar lotes'],
-            ['name' => 'lotes.crear', 'label' => 'Crear lotes', 'description' => 'Registrar lotes'],
-            ['name' => 'lotes.editar', 'label' => 'Editar lotes', 'description' => 'Modificar lotes'],
-            ['name' => 'lotes.eliminar', 'label' => 'Eliminar lotes', 'description' => 'Desactivar lotes'],
-            ['name' => 'reportes.ver', 'label' => 'Ver reportes', 'description' => 'Acceder a reportes del negocio'],
-            ['name' => 'sunat.ver', 'label' => 'Ver SUNAT', 'description' => 'Acceder a documentos y configuracion SUNAT'],
-            ['name' => 'sunat.configuracion.ver', 'label' => 'Ver configuracion SUNAT', 'description' => 'Consultar configuracion SUNAT de la empresa'],
-            ['name' => 'sunat.configuracion.crear', 'label' => 'Crear configuracion SUNAT', 'description' => 'Registrar configuracion SUNAT de la empresa'],
-            ['name' => 'sunat.configuracion.editar', 'label' => 'Editar configuracion SUNAT', 'description' => 'Actualizar configuracion SUNAT de la empresa'],
-            ['name' => 'sunat.configuracion.eliminar', 'label' => 'Eliminar configuracion SUNAT', 'description' => 'Desactivar configuracion SUNAT de la empresa'],
-            ['name' => 'sunat.comprobantes.ver', 'label' => 'Ver comprobantes electronicos', 'description' => 'Consultar boletas, facturas y comprobantes electronicos'],
-            ['name' => 'sunat.comprobantes.emitir', 'label' => 'Emitir comprobantes electronicos', 'description' => 'Enviar comprobantes electronicos a SUNAT'],
-            ['name' => 'sunat.comprobantes.reenviar', 'label' => 'Reenviar comprobantes electronicos', 'description' => 'Reintentar envio de comprobantes electronicos'],
-            ['name' => 'sunat.documentos.descargar', 'label' => 'Descargar documentos SUNAT', 'description' => 'Descargar PDF, tickets, XML y CDR'],
-            ['name' => 'sunat.notas.ver', 'label' => 'Ver notas electronicas', 'description' => 'Consultar notas de credito y debito'],
-            ['name' => 'sunat.notas.crear', 'label' => 'Crear notas electronicas', 'description' => 'Generar notas de credito y debito'],
-            ['name' => 'notas_credito.enviar_sunat', 'label' => 'Enviar notas de credito a SUNAT', 'description' => 'Enviar notas de credito electronicas a SUNAT'],
-            ['name' => 'notas_credito.reenviar_sunat', 'label' => 'Reenviar notas de credito a SUNAT', 'description' => 'Reintentar envio SUNAT de notas de credito'],
-            ['name' => 'notas_credito.descargar_xml', 'label' => 'Descargar XML de notas de credito', 'description' => 'Descargar XML privado de notas de credito'],
-            ['name' => 'notas_credito.descargar_cdr', 'label' => 'Descargar CDR de notas de credito', 'description' => 'Descargar CDR privado de notas de credito'],
-            ['name' => 'notas_credito.cdr.descargar', 'label' => 'Descargar CDR de notas de credito', 'description' => 'Descargar CDR privado de notas de credito'],
-            ['name' => 'notas_credito.xml.descargar', 'label' => 'Descargar XML de notas de credito', 'description' => 'Descargar XML privado de notas de credito'],
-            ['name' => 'notas_credito.ticket.descargar', 'label' => 'Descargar ticket de notas de credito', 'description' => 'Descargar ticket 80mm privado de notas de credito'],
-            ['name' => 'notas_credito.ticket.generar', 'label' => 'Generar ticket de notas de credito', 'description' => 'Generar ticket 80mm privado de notas de credito'],
-            ['name' => 'notas_credito.pdf.descargar', 'label' => 'Descargar PDF de notas de credito', 'description' => 'Descargar PDF A4 privado de notas de credito'],
-            ['name' => 'notas_credito.pdf.generar', 'label' => 'Generar PDF de notas de credito', 'description' => 'Generar PDF A4 privado de notas de credito'],
-            ['name' => 'sunat.resumenes.ver', 'label' => 'Ver resumenes diarios', 'description' => 'Consultar resumenes diarios de boletas'],
-            ['name' => 'sunat.resumenes.generar', 'label' => 'Generar resumenes diarios', 'description' => 'Generar, enviar y consultar resumenes diarios'],
-            ['name' => 'sunat.bajas.ver', 'label' => 'Ver comunicaciones de baja', 'description' => 'Consultar comunicaciones de baja'],
-            ['name' => 'sunat.bajas.generar', 'label' => 'Generar comunicaciones de baja', 'description' => 'Generar, enviar y consultar comunicaciones de baja'],
-            ['name' => 'sunat.guias.ver', 'label' => 'Ver guias de remision', 'description' => 'Consultar guias de remision electronicas'],
-            ['name' => 'sunat.guias.crear', 'label' => 'Crear guias de remision', 'description' => 'Generar y enviar guias de remision electronicas'],
-        ])->map(fn (array $permission) => Permission::updateOrCreate(
-            ['name' => $permission['name']],
-            array_merge($permission, ['active' => true])
-        ));
+        return collect($permissions)->map(function (string $label, string $name) {
+            return Permission::updateOrCreate(
+                ['name' => $name],
+                ['label' => $label, 'description' => $label, 'active' => true]
+            );
+        });
     }
 
     private function crearRoles(Empresa $empresa, Collection $permissions): array
     {
-        $catalogoLectura = [
-            'categorias.ver',
-            'marcas.ver',
-            'laboratorios.ver',
-            'principios_activos.ver',
-            'acciones_terapeuticas.ver',
-            'unidades_medida.ver',
-        ];
-
-        $catalogoEscritura = [
-            ...$catalogoLectura,
-            'categorias.crear',
-            'categorias.editar',
-            'categorias.eliminar',
-            'marcas.crear',
-            'marcas.editar',
-            'marcas.eliminar',
-            'laboratorios.crear',
-            'laboratorios.editar',
-            'laboratorios.eliminar',
-            'principios_activos.crear',
-            'principios_activos.editar',
-            'principios_activos.eliminar',
-            'acciones_terapeuticas.crear',
-            'acciones_terapeuticas.editar',
-            'acciones_terapeuticas.eliminar',
-            'unidades_medida.crear',
-            'unidades_medida.editar',
-            'unidades_medida.eliminar',
-        ];
-
-        $inventarioLectura = [
-            'inventario.ver',
-            'inventario.kardex',
-            'lotes.ver',
-        ];
-
-        $inventarioOperacion = [
-            ...$inventarioLectura,
-            'inventario.entrada',
-            'inventario.salida',
-            'inventario.ajuste',
-            'lotes.crear',
-            'lotes.editar',
-            'lotes.eliminar',
-        ];
-
-        $sunatLectura = [
-            'sunat.ver',
-            'sunat.configuracion.ver',
-            'sunat.comprobantes.ver',
-            'sunat.documentos.descargar',
-            'sunat.notas.ver',
-            'sunat.resumenes.ver',
-            'sunat.bajas.ver',
-            'sunat.guias.ver',
-        ];
-
-        $sunatOperacion = [
-            ...$sunatLectura,
-            'sunat.configuracion.crear',
-            'sunat.configuracion.editar',
-            'sunat.configuracion.eliminar',
-            'sunat.comprobantes.emitir',
-            'sunat.comprobantes.reenviar',
-            'sunat.notas.crear',
-            'sunat.resumenes.generar',
-            'sunat.bajas.generar',
-            'sunat.guias.crear',
-        ];
-
         $roles = [
             'Administrador' => $permissions->pluck('id')->all(),
+            'Supervisor' => $this->permissionIds([
+                'dashboard.ver', 'productos.ver', 'ventas.ver', 'ventas.imprimir', 'ventas.exportar', 'caja.ver', 'caja.historial', 'compras.ver', 'reportes.ver',
+                'sunat.ver', 'sunat.configuracion.ver', 'sunat.comprobantes.ver', 'sunat.documentos.descargar', 'sunat.notas.ver', 'sunat.notas.crear',
+                'notas_credito.ver', 'notas_credito.crear', 'notas_debito.ver', 'notas_debito.crear',
+                'sunat.resumenes.ver', 'sunat.bajas.ver', 'sunat.guias.ver', 'sunat.guias.crear',
+                'guias.crear', 'guias.enviar_sunat', 'guias.reenviar_sunat', 'guias.descargar_xml', 'guias.descargar_cdr', 'guias.pdf.generar', 'guias.pdf.descargar', 'guias.ticket.generar', 'guias.ticket.descargar',
+                'inventario.ver', 'inventario.entrada', 'inventario.salida', 'inventario.ajuste', 'inventario.kardex', 'lotes.ver', 'lotes.crear', 'lotes.editar', 'lotes.eliminar',
+                'categorias.ver', 'marcas.ver', 'laboratorios.ver', 'principios_activos.ver', 'acciones_terapeuticas.ver', 'unidades_medida.ver',
+            ]),
             'Cajero' => $this->permissionIds([
-                'dashboard.ver',
-                'ventas.ver',
-                'ventas.crear',
-                'ventas.imprimir',
-                'ventas.exportar',
-                'guias.crear',
-                'guias.enviar_sunat',
-                'guias.reenviar_sunat',
-                'guias.descargar_xml',
-                'guias.descargar_cdr',
-                'guias.pdf.generar',
-                'guias.pdf.descargar',
-                'guias.ticket.generar',
-                'guias.ticket.descargar',
-                'caja.ver',
-                'caja.aperturar',
-                'caja.cerrar',
-                'caja.ingreso',
-                'caja.egreso',
-                'caja.historial',
-                'sunat.comprobantes.ver',
-                'sunat.documentos.descargar',
-                ...$inventarioLectura,
+                'dashboard.ver', 'ventas.ver', 'ventas.crear', 'ventas.imprimir', 'ventas.exportar', 'caja.ver', 'caja.aperturar', 'caja.cerrar', 'caja.ingreso', 'caja.egreso',
+                'sunat.comprobantes.ver', 'sunat.documentos.descargar', 'sunat.notas.ver', 'notas_credito.ver', 'notas_debito.ver', 'inventario.ver', 'lotes.ver',
             ]),
             'Almacenero' => $this->permissionIds([
-                'dashboard.ver',
-                'productos.ver',
-                'productos.crear',
-                'productos.editar',
-                'productos.eliminar',
-                'compras.ver',
-                'compras.crear',
-                ...$inventarioOperacion,
-                ...$catalogoEscritura,
-            ]),
-            'Supervisor' => $this->permissionIds([
-                'dashboard.ver',
-                'productos.ver',
-                'ventas.ver',
-                'ventas.imprimir',
-                'ventas.exportar',
-                'guias.crear',
-                'guias.enviar_sunat',
-                'guias.reenviar_sunat',
-                'guias.descargar_xml',
-                'guias.descargar_cdr',
-                'guias.pdf.generar',
-                'guias.pdf.descargar',
-                'guias.ticket.generar',
-                'guias.ticket.descargar',
-                'caja.ver',
-                'caja.historial',
-                'compras.ver',
-                'reportes.ver',
-                ...$sunatOperacion,
-                ...$inventarioOperacion,
-                ...$catalogoLectura,
+                'dashboard.ver', 'productos.ver', 'productos.crear', 'productos.editar', 'productos.eliminar', 'compras.ver', 'compras.crear',
+                'inventario.ver', 'inventario.entrada', 'inventario.salida', 'inventario.ajuste', 'inventario.kardex', 'lotes.ver', 'lotes.crear', 'lotes.editar', 'lotes.eliminar',
+                'categorias.ver', 'categorias.crear', 'categorias.editar', 'marcas.ver', 'marcas.crear', 'marcas.editar', 'laboratorios.ver', 'laboratorios.crear', 'laboratorios.editar',
+                'principios_activos.ver', 'principios_activos.crear', 'principios_activos.editar', 'acciones_terapeuticas.ver', 'acciones_terapeuticas.crear', 'acciones_terapeuticas.editar', 'unidades_medida.ver', 'unidades_medida.crear', 'unidades_medida.editar',
             ]),
         ];
 
-        $createdRoles = [];
-
-        foreach ($roles as $roleName => $permissionIds) {
-            $role = Role::updateOrCreate([
-                'empresa_id' => $empresa->id,
-                'slug' => Str::slug($roleName),
-            ], [
-                'name' => $roleName,
-                'description' => "Rol de {$roleName}",
-                'active' => true,
-            ]);
-
+        $created = [];
+        foreach ($roles as $name => $permissionIds) {
+            $role = Role::updateOrCreate(
+                ['empresa_id' => $empresa->id, 'slug' => Str::slug($name)],
+                ['name' => $name, 'description' => "Rol {$name}", 'active' => true]
+            );
             $role->permissions()->sync($permissionIds);
-            $createdRoles[$roleName] = $role;
+            $created[$name] = $role;
         }
 
-        return $createdRoles;
+        return $created;
+    }
+
+    private function crearUsuarios(Tenant $tenant, Empresa $empresa, Collection $tiendas, array $roles): void
+    {
+        $users = [
+            ['name' => 'Administrador Demo', 'email' => 'admin@botica.demo', 'role' => 'Administrador', 'tiendas' => $tiendas],
+            ['name' => 'Cajero Demo', 'email' => 'cajero@botica.demo', 'role' => 'Cajero', 'tiendas' => $tiendas->take(2)],
+            ['name' => 'Almacenero Demo', 'email' => 'almacen@botica.demo', 'role' => 'Almacenero', 'tiendas' => $tiendas],
+            ['name' => 'Supervisor Demo', 'email' => 'supervisor@botica.demo', 'role' => 'Supervisor', 'tiendas' => $tiendas],
+        ];
+
+        foreach ($users as $data) {
+            $user = User::updateOrCreate(
+                ['email' => $data['email']],
+                [
+                    'tenant_id' => $tenant->id,
+                    'empresa_id' => $empresa->id,
+                    'tienda_activa_id' => $data['tiendas']->first()?->id,
+                    'role_id' => $roles[$data['role']]->id,
+                    'name' => $data['name'],
+                    'password' => Hash::make('password123'),
+                ]
+            );
+
+            $this->asignarTiendas($user, $data['tiendas'], $tenant->id, $empresa->id);
+        }
+    }
+
+    private function syncAdminAllPermissions(Empresa $empresa): void
+    {
+        $allPermissionIds = Permission::pluck('id')->all();
+
+        Role::where('empresa_id', $empresa->id)
+            ->whereIn('name', ['Administrador'])
+            ->get()
+            ->each(fn (Role $role) => $role->permissions()->sync($allPermissionIds));
     }
 
     private function permissionIds(array $names): array
@@ -539,17 +445,13 @@ class DatabaseSeeder extends Seeder
     private function asignarTiendas(User $user, iterable $tiendas, int $tenantId, int $empresaId): void
     {
         foreach ($tiendas as $tienda) {
-            $user->tiendas()->attach($tienda->id, [
-                'tenant_id' => $tenantId,
-                'empresa_id' => $empresaId,
-                'estado' => true,
+            $user->tiendas()->syncWithoutDetaching([
+                $tienda->id => [
+                    'tenant_id' => $tenantId,
+                    'empresa_id' => $empresaId,
+                    'estado' => true,
+                ],
             ]);
         }
     }
 }
-
-
-
-
-
-
