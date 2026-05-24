@@ -62,7 +62,7 @@ class NotaDebitoService
             $comprobante = $this->validarComprobante($data['comprobante_id'], $scope);
             $venta = $comprobante->venta;
             $motivo = $this->validarMotivo($data['motivo_codigo']);
-            $detalles = $this->calcularDetalles($data['detalles']);
+            $detalles = $this->calcularDetalles($data['detalles'], $scope);
             $totales = $this->calcularTotales($detalles);
 
             if ($totales['total'] <= 0) {
@@ -234,9 +234,9 @@ class NotaDebitoService
         return MotivoNotaDebito::where('codigo', $codigo)->where('estado', true)->firstOrFail();
     }
 
-    protected function calcularDetalles(array $items): array
+    protected function calcularDetalles(array $items, array $scope): array
     {
-        return collect($items)->map(function (array $item) {
+        return collect($items)->map(function (array $item) use ($scope) {
             $cantidad = round((float) $item['cantidad'], 4);
             $precio = round((float) $item['precio_unitario'], 2);
             $total = round($cantidad * $precio, 2);
@@ -244,6 +244,8 @@ class NotaDebitoService
             $igv = round($total - $subtotal, 2);
 
             return [
+                'tenant_id' => $scope['tenant_id'],
+                'empresa_id' => $scope['empresa_id'],
                 'descripcion' => trim($item['descripcion']),
                 'cantidad' => $cantidad,
                 'precio_unitario' => $precio,
