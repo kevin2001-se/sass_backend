@@ -38,12 +38,16 @@ class Venta extends Model
         'total',
         'estado',
         'observacion',
+        'motivo_anulacion',
+        'anulado_at',
+        'anulado_by',
     ];
 
     protected function casts(): array
     {
         return [
             'fecha_emision' => 'datetime',
+            'anulado_at' => 'datetime',
             'subtotal' => 'decimal:2',
             'total_igv' => 'decimal:2',
             'total_descuento' => 'decimal:2',
@@ -76,6 +80,11 @@ class Venta extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function anuladoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'anulado_by');
+    }
+
     public function detalles(): HasMany
     {
         return $this->hasMany(VentaDetalle::class);
@@ -105,4 +114,15 @@ class Venta extends Model
     {
         return $this->hasMany(GuiaRemision::class);
     }
+
+    public function notasCredito(): HasMany
+    {
+        return $this->hasMany(NotaCredito::class);
+    }
+    public function notasDebito(): HasMany
+    {
+        return $this->hasMany(NotaDebito::class);
+    }
 }
+
+

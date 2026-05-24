@@ -115,5 +115,17 @@ class ComprobanteElectronico extends Model
     {
         return $this->belongsTo(GuiaRemision::class);
     }
+
+    public function notasCredito(): HasMany
+    {
+        return $this->hasMany(NotaCredito::class, 'comprobante_id');
+    }
+    public function notasDebito(): HasMany
+    {
+        return $this->hasMany(NotaDebito::class, 'comprobante_id');
+    }
 }
+
+
+
 

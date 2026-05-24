@@ -20,13 +20,49 @@ class ComprobanteElectronicoController extends Controller
 
     public function index(Request $request)
     {
-        $comprobantes = ComprobanteElectronico::with('venta')
+        $comprobantes = ComprobanteElectronico::with([
+                'venta.cliente',
+                'venta.detalles.producto',
+                'venta.detalles.presentacion.unidadMedida',
+            ])
+            ->withCount('notasCredito')
             ->where('tenant_id', $request->attributes->get('tenant')->id)
             ->where('empresa_id', $request->attributes->get('empresa')->id)
             ->where('tienda_id', $request->attributes->get('tienda')->id)
             ->when($request->filled('estado_sunat'), fn ($query) => $query->where('estado_sunat', $request->input('estado_sunat')))
-            ->when($request->filled('tipo_comprobante'), fn ($query) => $query->where('tipo_comprobante', $request->input('tipo_comprobante')))
+            ->when($request->filled('tipo_comprobante'), function ($query) use ($request) {
+                $tipos = collect(explode(',', (string) $request->input('tipo_comprobante')))
+                    ->map(fn ($tipo) => trim($tipo))
+                    ->filter()
+                    ->values();
+
+                return $tipos->count() > 1
+                    ? $query->whereIn('tipo_comprobante', $tipos->all())
+                    : $query->where('tipo_comprobante', $tipos->first());
+            })
             ->when($request->filled('venta_id'), fn ($query) => $query->where('venta_id', $request->integer('venta_id')))
+            ->when($request->filled('numero'), fn ($query) => $query->where('numero_comprobante', 'ILIKE', '%'.trim((string) $request->input('numero')).'%'))
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = trim((string) $request->input('search'));
+
+                return $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('numero_comprobante', 'ILIKE', '%'.$search.'%')
+                        ->orWhereHas('venta.cliente', function ($clienteQuery) use ($search) {
+                            $clienteQuery->where('nombres', 'ILIKE', '%'.$search.'%')
+                                ->orWhere('razon_social', 'ILIKE', '%'.$search.'%')
+                                ->orWhere('numero_documento', 'ILIKE', '%'.$search.'%');
+                        });
+                });
+            })
+            ->when($request->filled('cliente'), function ($query) use ($request) {
+                $cliente = trim((string) $request->input('cliente'));
+
+                return $query->whereHas('venta.cliente', function ($clienteQuery) use ($cliente) {
+                    $clienteQuery->where('nombres', 'ILIKE', '%'.$cliente.'%')
+                        ->orWhere('razon_social', 'ILIKE', '%'.$cliente.'%')
+                        ->orWhere('numero_documento', 'ILIKE', '%'.$cliente.'%');
+                });
+            })
             ->orderByDesc('fecha_emision')
             ->orderByDesc('id')
             ->paginate($request->integer('per_page', 15));
@@ -87,7 +123,13 @@ class ComprobanteElectronicoController extends Controller
 
     protected function findScoped(Request $request, int $id): ComprobanteElectronico
     {
-        return ComprobanteElectronico::where('tenant_id', $request->attributes->get('tenant')->id)
+        return ComprobanteElectronico::with([
+                'venta.cliente',
+                'venta.detalles.producto',
+                'venta.detalles.presentacion.unidadMedida',
+            ])
+            ->withCount('notasCredito')
+            ->where('tenant_id', $request->attributes->get('tenant')->id)
             ->where('empresa_id', $request->attributes->get('empresa')->id)
             ->where('tienda_id', $request->attributes->get('tienda')->id)
             ->findOrFail($id);

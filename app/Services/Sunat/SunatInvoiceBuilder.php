@@ -10,6 +10,7 @@ use Greenter\Model\Company\Company;
 use Greenter\Model\Sale\Invoice;
 use Greenter\Model\Sale\Legend;
 use Greenter\Model\Sale\SaleDetail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class SunatInvoiceBuilder
@@ -18,7 +19,13 @@ class SunatInvoiceBuilder
 
     public function buildFromVenta(Venta $venta): Invoice
     {
-        $venta->loadMissing(['empresa.sunatConfiguraciones', 'cliente', 'detalles']);
+        $venta->loadMissing([
+            'empresa.sunatConfiguraciones',
+            'tienda',
+            'cliente',
+            'detalles.producto',
+            'detalles.presentacion.unidadMedida',
+        ]);
 
         if ($venta->tipo_comprobante === Venta::FACTURA && (! $venta->cliente || $venta->cliente->tipo_documento !== Cliente::RUC)) {
             throw ValidationException::withMessages([
@@ -26,12 +33,15 @@ class SunatInvoiceBuilder
             ]);
         }
 
+        $this->validarDetalles($venta);
+
         $cliente = $this->clienteGreenter($venta);
         $tipoDocumento = $venta->tipo_comprobante === Venta::FACTURA ? '01' : '03';
         $gravadas = round((float) $venta->detalles->where('afecto_igv', true)->sum('subtotal'), 2);
         $inafectas = round((float) $venta->detalles->where('afecto_igv', false)->sum('subtotal'), 2);
+        $descuentos = round((float) $venta->detalles->sum('descuento'), 2);
 
-        return (new Invoice())
+        $invoice = (new Invoice())
             ->setUblVersion('2.0')
             ->setTipoOperacion('0101')
             ->setTipoDoc($tipoDocumento)
@@ -50,6 +60,12 @@ class SunatInvoiceBuilder
             ->setMtoImpVenta(round((float) $venta->total, 2))
             ->setDetails($this->detallesGreenter($venta))
             ->setLegends($this->leyendasGreenter($venta));
+
+        if ($descuentos > 0) {
+            $invoice->setMtoDescuentos($descuentos);
+        }
+
+        return $invoice;
     }
 
     protected function empresaGreenter(Venta $venta): Company
@@ -91,9 +107,15 @@ class SunatInvoiceBuilder
     protected function detallesGreenter(Venta $venta): array
     {
         return $venta->detalles->values()->map(function ($detalle, int $index) {
-            return (new SaleDetail())
-                ->setUnidad('NIU')
-                ->setCantidad(round((float) $detalle->cantidad_presentacion, 4))
+            $descuento = round((float) $detalle->descuento, 2);
+            $precioUnitario = round((float) $detalle->precio_unitario, 2);
+            $cantidad = round((float) $detalle->cantidad_presentacion, 4);
+            $subtotalBruto = round($cantidad * $precioUnitario, 2);
+            $unidadSunat = $this->unidadSunat($detalle);
+
+            $item = (new SaleDetail())
+                ->setUnidad($unidadSunat)
+                ->setCantidad($cantidad)
                 ->setCodProducto((string) ($detalle->producto_id ?: ($index + 1)))
                 ->setDescripcion($detalle->descripcion)
                 ->setMtoBaseIgv(round((float) $detalle->subtotal, 2))
@@ -103,9 +125,26 @@ class SunatInvoiceBuilder
                 ->setTotalImpuestos(round((float) $detalle->igv, 2))
                 ->setMtoValorVenta(round((float) $detalle->subtotal, 2))
                 ->setMtoValorUnitario($detalle->afecto_igv
-                    ? round((float) $detalle->precio_unitario / (1 + self::IGV), 6)
-                    : round((float) $detalle->precio_unitario, 6))
-                ->setMtoPrecioUnitario(round((float) $detalle->precio_unitario, 2));
+                    ? round($precioUnitario / (1 + self::IGV), 6)
+                    : round($precioUnitario, 6))
+                ->setMtoPrecioUnitario($precioUnitario);
+
+            if ($descuento > 0) {
+                $item->setDescuento($descuento);
+            }
+
+            Log::debug('SUNAT detalle invoice', [
+                'venta_detalle_id' => $detalle->id,
+                'producto_id' => $detalle->producto_id,
+                'unidad_sunat' => $unidadSunat,
+                'subtotal_bruto' => $subtotalBruto,
+                'descuento' => $descuento,
+                'subtotal_guardado' => (float) $detalle->subtotal,
+                'igv_guardado' => (float) $detalle->igv,
+                'total_guardado' => (float) $detalle->total,
+            ]);
+
+            return $item;
         })->all();
     }
 
@@ -129,5 +168,61 @@ class SunatInvoiceBuilder
             Cliente::CE => '4',
             default => '0',
         };
+    }
+
+    protected function unidadSunat($detalle): string
+    {
+        $codigo = strtoupper(trim((string) ($detalle->presentacion?->unidadMedida?->codigo_sunat ?: '')));
+
+        if ($codigo === '') {
+            Log::warning('SUNAT invoice detalle sin codigo_sunat, usando NIU.', [
+                'venta_detalle_id' => $detalle->id,
+                'producto_presentacion_id' => $detalle->producto_presentacion_id,
+            ]);
+
+            return 'NIU';
+        }
+
+        return $codigo;
+    }
+
+    protected function validarDetalles(Venta $venta): void
+    {
+        $sumTotal = 0;
+        $sumIgv = 0;
+
+        foreach ($venta->detalles as $detalle) {
+            $cantidad = (float) $detalle->cantidad_presentacion;
+            $precioUnitario = (float) $detalle->precio_unitario;
+            $descuento = (float) $detalle->descuento;
+            $subtotalBruto = round($cantidad * $precioUnitario, 2);
+            $unidad = $this->unidadSunat($detalle);
+
+            if ($unidad === '') {
+                throw ValidationException::withMessages(['detalles' => ['Hay un detalle sin unidad SUNAT válida.']]);
+            }
+
+            if ($descuento < 0 || $descuento > $subtotalBruto) {
+                Log::warning('SUNAT invoice descuento invalido.', [
+                    'venta_id' => $venta->id,
+                    'detalle_id' => $detalle->id,
+                    'subtotal_bruto' => $subtotalBruto,
+                    'descuento' => $descuento,
+                ]);
+
+                throw ValidationException::withMessages(['detalles' => ['El descuento de un item no puede superar su subtotal bruto.']]);
+            }
+
+            $sumTotal += (float) $detalle->total;
+            $sumIgv += (float) $detalle->igv;
+        }
+
+        if (abs(round($sumTotal, 2) - round((float) $venta->total, 2)) > 0.02) {
+            throw ValidationException::withMessages(['total' => ['El total de detalles no cuadra con el total de la venta.']]);
+        }
+
+        if (abs(round($sumIgv, 2) - round((float) $venta->total_igv, 2)) > 0.02) {
+            throw ValidationException::withMessages(['total_igv' => ['El IGV de detalles no cuadra con el IGV de la venta.']]);
+        }
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Cliente;
+use App\Models\ComprobanteElectronico;
 use App\Models\InventarioMovimiento;
 use App\Models\Producto;
 use App\Models\ProductoPresentacion;
@@ -109,7 +110,7 @@ class VentaService
     public function anularVenta(int $ventaId, string $motivo, array $scope): Venta
     {
         return DB::transaction(function () use ($ventaId, $motivo, $scope) {
-            $venta = Venta::with('detalles')
+            $venta = Venta::with(['detalles', 'comprobanteElectronico'])
                 ->where('tenant_id', $scope['tenant_id'])
                 ->where('empresa_id', $scope['empresa_id'])
                 ->where('tienda_id', $scope['tienda_id'])
@@ -118,7 +119,14 @@ class VentaService
 
             if ($venta->estado === Venta::ANULADA) {
                 throw ValidationException::withMessages([
-                    'venta' => ['La venta ya estÃ¡ anulada.'],
+                    'venta' => ['La venta ya está anulada.'],
+                ]);
+            }
+
+            if (in_array($venta->tipo_comprobante, [Venta::BOLETA, Venta::FACTURA], true)
+                && $venta->comprobanteElectronico?->estado_sunat === ComprobanteElectronico::ACEPTADO) {
+                throw ValidationException::withMessages([
+                    'venta' => ['Este comprobante fue aceptado por SUNAT. Debe generar una Nota de Crédito.'],
                 ]);
             }
 
@@ -146,6 +154,9 @@ class VentaService
 
             $venta->update([
                 'estado' => Venta::ANULADA,
+                'motivo_anulacion' => $motivo,
+                'anulado_at' => now(),
+                'anulado_by' => $scope['user_id'],
                 'observacion' => trim(($venta->observacion ? $venta->observacion.' | ' : '').'ANULADA: '.$motivo),
             ]);
             $venta->pagos()->update(['estado' => 'ANULADO']);

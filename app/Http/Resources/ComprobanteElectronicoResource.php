@@ -8,6 +8,11 @@ class ComprobanteElectronicoResource extends JsonResource
 {
     public function toArray($request): array
     {
+        $venta = $this->relationLoaded('venta') ? $this->venta : null;
+        $cliente = $venta && $venta->relationLoaded('cliente') ? $venta->cliente : null;
+        $detalles = $venta && $venta->relationLoaded('detalles') ? $venta->detalles : collect();
+        $notasCreditoCount = (int) ($this->notas_credito_count ?? 0);
+
         return [
             'id' => $this->id,
             'venta_id' => $this->venta_id,
@@ -22,6 +27,37 @@ class ComprobanteElectronicoResource extends JsonResource
             'numero_comprobante' => $this->numero_comprobante,
             'fecha_emision' => $this->fecha_emision?->toDateTimeString(),
             'moneda' => $this->moneda,
+            'subtotal' => $venta ? (float) $venta->subtotal : 0,
+            'total_igv' => $venta ? (float) $venta->total_igv : 0,
+            'total_descuento' => $venta ? (float) $venta->total_descuento : 0,
+            'total' => $venta ? (float) $venta->total : 0,
+            'notas_credito_count' => $notasCreditoCount,
+            'cliente' => $cliente ? [
+                'id' => $cliente->id,
+                'tipo_documento' => $cliente->tipo_documento,
+                'numero_documento' => $cliente->numero_documento,
+                'nombres' => $cliente->nombres,
+                'razon_social' => $cliente->razon_social,
+                'nombre' => $cliente->razon_social ?: $cliente->nombres,
+            ] : null,
+            'venta' => $venta ? [
+                'id' => $venta->id,
+                'numero_comprobante' => $venta->numero_comprobante,
+                'subtotal' => (float) $venta->subtotal,
+                'total_igv' => (float) $venta->total_igv,
+                'total_descuento' => (float) $venta->total_descuento,
+                'total' => (float) $venta->total,
+                'notas_credito_count' => $notasCreditoCount,
+                'detalles' => VentaDetalleResource::collection($detalles),
+                'cliente' => $cliente ? [
+                    'id' => $cliente->id,
+                    'tipo_documento' => $cliente->tipo_documento,
+                    'numero_documento' => $cliente->numero_documento,
+                    'nombres' => $cliente->nombres,
+                    'razon_social' => $cliente->razon_social,
+                    'nombre' => $cliente->razon_social ?: $cliente->nombres,
+                ] : null,
+            ] : null,
             'estado_sunat' => $this->estado_sunat,
             'codigo_respuesta' => $this->codigo_respuesta,
             'mensaje_respuesta' => $this->mensaje_respuesta,

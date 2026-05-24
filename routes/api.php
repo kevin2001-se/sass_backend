@@ -25,6 +25,14 @@ use App\Http\Controllers\Api\MarcaController;
 use App\Http\Controllers\Api\ModalidadTransporteController;
 use App\Http\Controllers\Api\MotivoTrasladoController;
 use App\Http\Controllers\Api\NotaElectronicaController;
+use App\Http\Controllers\Api\NotaCreditoController;
+use App\Http\Controllers\Api\NotaCreditoDocumentoController;
+use App\Http\Controllers\Api\NotaCreditoSunatController;
+use App\Http\Controllers\Api\NotaDebitoController;
+use App\Http\Controllers\Api\NotaDebitoDocumentoController;
+use App\Http\Controllers\Api\NotaDebitoSunatController;
+use App\Http\Controllers\Api\MotivoNotaCreditoController;
+use App\Http\Controllers\Api\MotivoNotaDebitoController;
 use App\Http\Controllers\Api\PrincipioActivoController;
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Api\ProductoConfiguracionController;
@@ -57,7 +65,7 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::get('dashboard/resumen', [DashboardController::class, 'resumen'])->middleware(['resolve.tienda', 'permission:dashboard.ver']);
 
     Route::get('dashboard', function () {
-        return response()->json(['message' => 'Dashboard cargado con ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©xito.']);
+        return response()->json(['message' => 'Dashboard cargado con exito.']);
     })->middleware(['resolve.tienda', 'permission:dashboard.ver']);
 
     Route::get('categorias', [CategoriaController::class, 'index'])->middleware('permission:productos.ver');
@@ -153,6 +161,36 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::post('ventas/{venta}/pdf', [VentaController::class, 'generarPdf'])->middleware(['resolve.tienda', 'permission:ventas.exportar']);
     Route::get('ventas/{venta}/pdf', [VentaController::class, 'pdf'])->middleware(['resolve.tienda', 'permission:ventas.exportar']);
 
+
+    Route::get('motivos-nota-credito', [MotivoNotaCreditoController::class, 'index'])->middleware(['resolve.tienda', 'permission:sunat.notas.ver']);
+    Route::get('motivos-nota-debito', [MotivoNotaDebitoController::class, 'index'])->middleware(['resolve.tienda', 'permission:sunat.notas.ver']);
+    Route::get('notas-debito', [NotaDebitoController::class, 'index'])->middleware(['resolve.tienda', 'permission:sunat.notas.ver']);
+    Route::post('notas-debito', [NotaDebitoController::class, 'store'])->middleware(['resolve.tienda', 'permission:sunat.notas.crear']);
+    Route::get('notas-debito/{id}', [NotaDebitoController::class, 'show'])->middleware(['resolve.tienda', 'permission:sunat.notas.ver']);
+    Route::post('notas-debito/{notaDebito}/anular', [NotaDebitoController::class, 'anular'])->middleware(['resolve.tienda', 'permission:sunat.notas.crear']);
+    Route::post('notas-debito/{id}/enviar-sunat', [NotaDebitoSunatController::class, 'enviar'])->middleware(['resolve.tienda', 'permission:notas_debito.enviar_sunat']);
+    Route::post('notas-debito/{id}/reenviar-sunat', [NotaDebitoSunatController::class, 'reenviar'])->middleware(['resolve.tienda', 'permission:notas_debito.reenviar_sunat']);
+    Route::post('notas-debito/{id}/generar-pdf-a4', [NotaDebitoDocumentoController::class, 'generarPdfA4'])->middleware(['resolve.tienda', 'permission:notas_debito.pdf.generar']);
+    Route::post('notas-debito/{id}/generar-ticket-80', [NotaDebitoDocumentoController::class, 'generarTicket80'])->middleware(['resolve.tienda', 'permission:notas_debito.ticket.generar']);
+    Route::post('notas-debito/{id}/generar-formatos', [NotaDebitoDocumentoController::class, 'generarFormatos'])->middleware(['resolve.tienda', 'permission:notas_debito.pdf.generar']);
+    Route::get('notas-debito/{id}/pdf-a4', [NotaDebitoDocumentoController::class, 'pdfA4'])->middleware(['resolve.tienda', 'permission:notas_debito.pdf.descargar']);
+    Route::get('notas-debito/{id}/ticket-80', [NotaDebitoDocumentoController::class, 'ticket80'])->middleware(['resolve.tienda', 'permission:notas_debito.ticket.descargar']);
+    Route::get('notas-debito/{id}/xml', [NotaDebitoDocumentoController::class, 'xml'])->middleware(['resolve.tienda', 'permission:notas_debito.xml.descargar']);
+    Route::get('notas-debito/{id}/cdr', [NotaDebitoDocumentoController::class, 'cdr'])->middleware(['resolve.tienda', 'permission:notas_debito.cdr.descargar']);
+    Route::get('notas-credito', [NotaCreditoController::class, 'index'])->middleware(['resolve.tienda', 'permission:sunat.notas.ver']);
+    Route::post('notas-credito', [NotaCreditoController::class, 'store'])->middleware(['resolve.tienda', 'permission:sunat.notas.crear']);
+    Route::get('notas-credito/{id}', [NotaCreditoController::class, 'show'])->middleware(['resolve.tienda', 'permission:sunat.notas.ver']);
+    Route::post('notas-credito/{notaCredito}/aplicar-efectos', [NotaCreditoController::class, 'aplicarEfectos'])->middleware(['resolve.tienda', 'permission:sunat.notas.crear']);
+    Route::post('notas-credito/{id}/enviar-sunat', [NotaCreditoSunatController::class, 'enviar'])->middleware(['resolve.tienda', 'permission:notas_credito.enviar_sunat']);
+    Route::post('notas-credito/{id}/reenviar-sunat', [NotaCreditoSunatController::class, 'reenviar'])->middleware(['resolve.tienda', 'permission:notas_credito.reenviar_sunat']);
+    Route::post('notas-credito/{id}/generar-pdf-a4', [NotaCreditoDocumentoController::class, 'generarPdfA4'])->middleware(['resolve.tienda', 'permission:notas_credito.pdf.generar']);
+    Route::post('notas-credito/{id}/generar-ticket-80', [NotaCreditoDocumentoController::class, 'generarTicket80'])->middleware(['resolve.tienda', 'permission:notas_credito.ticket.generar']);
+    Route::post('notas-credito/{id}/generar-formatos', [NotaCreditoDocumentoController::class, 'generarFormatos'])->middleware(['resolve.tienda', 'permission:notas_credito.pdf.generar']);
+    Route::get('notas-credito/{id}/pdf-a4', [NotaCreditoDocumentoController::class, 'pdfA4'])->middleware(['resolve.tienda', 'permission:notas_credito.pdf.descargar']);
+    Route::get('notas-credito/{id}/ticket-80', [NotaCreditoDocumentoController::class, 'ticket80'])->middleware(['resolve.tienda', 'permission:notas_credito.ticket.descargar']);
+    Route::get('notas-credito/{id}/xml', [NotaCreditoDocumentoController::class, 'xml'])->middleware(['resolve.tienda', 'permission:notas_credito.xml.descargar']);
+    Route::get('notas-credito/{id}/cdr', [NotaCreditoDocumentoController::class, 'cdr'])->middleware(['resolve.tienda', 'permission:notas_credito.cdr.descargar']);
+    Route::post('notas-credito/{notaCredito}/anular', [NotaCreditoController::class, 'anular'])->middleware(['resolve.tienda', 'permission:sunat.notas.crear']);
 
     Route::get('motivos-traslado', [MotivoTrasladoController::class, 'index'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
     Route::get('modalidades-transporte', [ModalidadTransporteController::class, 'index'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
@@ -301,6 +339,8 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::get('sunat/documentos/{id}/xml', [DocumentoElectronicoController::class, 'xml'])->middleware('resolve.tienda');
     Route::get('sunat/documentos/{id}/cdr', [DocumentoElectronicoController::class, 'cdr'])->middleware('resolve.tienda');
 });
+
+
 
 
 

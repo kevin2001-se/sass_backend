@@ -75,7 +75,7 @@ class ComprobanteElectronicoService
 
     public function generarXml(ComprobanteElectronico $comprobante): string
     {
-        $comprobante->loadMissing('venta.cliente', 'venta.detalles', 'venta.empresa.sunatConfiguraciones');
+        $comprobante->loadMissing('venta.cliente', 'venta.empresa.sunatConfiguraciones', 'venta.tienda', 'venta.detalles.producto', 'venta.detalles.presentacion.unidadMedida');
         $this->validarVentaParaEmision($comprobante->venta);
         $configuracion = $this->configuracionActiva($comprobante->venta);
         $see = $this->clientFactory->make($configuracion);
@@ -94,7 +94,7 @@ class ComprobanteElectronicoService
     public function enviarSunat(ComprobanteElectronico $comprobante): ComprobanteElectronico
     {
         try {
-            $comprobante->loadMissing('venta.cliente', 'venta.detalles', 'venta.empresa.sunatConfiguraciones');
+            $comprobante->loadMissing('venta.cliente', 'venta.empresa.sunatConfiguraciones', 'venta.tienda', 'venta.detalles.producto', 'venta.detalles.presentacion.unidadMedida');
             $this->validarVentaParaEmision($comprobante->venta);
 
             $configuracion = $this->configuracionActiva($comprobante->venta);
@@ -217,7 +217,7 @@ class ComprobanteElectronicoService
 
     protected function ventaQuery(?array $scope)
     {
-        $query = Venta::with(['cliente', 'empresa.sunatConfiguraciones', 'detalles']);
+        $query = Venta::with(['cliente', 'empresa.sunatConfiguraciones', 'tienda', 'detalles.producto', 'detalles.presentacion.unidadMedida']);
 
         return $scope
             ? $query->where('tenant_id', $scope['tenant_id'])->where('empresa_id', $scope['empresa_id'])->where('tienda_id', $scope['tienda_id'])

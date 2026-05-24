@@ -30,6 +30,8 @@ class DatabaseSeeder extends Seeder
             ModalidadTransporteSeeder::class,
             UnidadMedidaSunatSeeder::class,
             UbigeoSeeder::class,
+            MotivoNotaCreditoSeeder::class,
+            MotivoNotaDebitoSeeder::class,
         ]);
         $tenant = Tenant::create([
             'name' => 'Demo Tenant',
@@ -175,23 +177,23 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ([
-            ['nombre' => 'AnalgÃ©sicos', 'descripcion' => 'Medicamentos para aliviar el dolor.'],
-            ['nombre' => 'AntibiÃ³ticos', 'descripcion' => 'Medicamentos antimicrobianos bajo control.'],
-            ['nombre' => 'Antigripales', 'descripcion' => 'Productos para sÃ­ntomas de resfrÃ­o y gripe.'],
+            ['nombre' => 'AnalgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sicos', 'descripcion' => 'Medicamentos para aliviar el dolor.'],
+            ['nombre' => 'AntibiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³ticos', 'descripcion' => 'Medicamentos antimicrobianos bajo control.'],
+            ['nombre' => 'Antigripales', 'descripcion' => 'Productos para sÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ntomas de resfrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­o y gripe.'],
             ['nombre' => 'Gastrointestinales', 'descripcion' => 'Tratamientos para el sistema digestivo.'],
-            ['nombre' => 'DermatolÃ³gicos', 'descripcion' => 'Cremas, ungÃ¼entos y tratamientos de piel.'],
-            ['nombre' => 'Vitaminas y suplementos', 'descripcion' => 'Suplementos nutricionales y vitamÃ­nicos.'],
+            ['nombre' => 'DermatolÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³gicos', 'descripcion' => 'Cremas, ungÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼entos y tratamientos de piel.'],
+            ['nombre' => 'Vitaminas y suplementos', 'descripcion' => 'Suplementos nutricionales y vitamÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nicos.'],
             ['nombre' => 'Cuidado personal', 'descripcion' => 'Productos de higiene y cuidado diario.'],
-            ['nombre' => 'Material mÃ©dico', 'descripcion' => 'Insumos y dispositivos de uso mÃ©dico.'],
+            ['nombre' => 'Material mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©dico', 'descripcion' => 'Insumos y dispositivos de uso mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©dico.'],
         ] as $item) {
             Categoria::create(array_merge($base, $item));
         }
 
         foreach ([
-            ['nombre' => 'GenÃ©rico', 'descripcion' => 'Producto sin marca comercial especÃ­fica.'],
-            ['nombre' => 'Panadol', 'descripcion' => 'Marca comercial de analgÃ©sicos.'],
+            ['nombre' => 'GenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rico', 'descripcion' => 'Producto sin marca comercial especÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­fica.'],
+            ['nombre' => 'Panadol', 'descripcion' => 'Marca comercial de analgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sicos.'],
             ['nombre' => 'Apronax', 'descripcion' => 'Marca comercial de antiinflamatorios.'],
-            ['nombre' => 'Dolocordralan', 'descripcion' => 'Marca comercial farmacÃ©utica.'],
+            ['nombre' => 'Dolocordralan', 'descripcion' => 'Marca comercial farmacÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©utica.'],
             ['nombre' => 'Bismutol', 'descripcion' => 'Marca comercial gastrointestinal.'],
             ['nombre' => 'Vick', 'descripcion' => 'Marca de productos respiratorios.'],
             ['nombre' => 'Ensure', 'descripcion' => 'Marca de suplementos nutricionales.'],
@@ -201,40 +203,40 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ([
-            ['nombre' => 'Medifarma', 'descripcion' => 'Laboratorio farmacÃ©utico peruano.'],
-            ['nombre' => 'Portugal', 'descripcion' => 'Laboratorio de productos farmacÃ©uticos.'],
+            ['nombre' => 'Medifarma', 'descripcion' => 'Laboratorio farmacÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©utico peruano.'],
+            ['nombre' => 'Portugal', 'descripcion' => 'Laboratorio de productos farmacÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©uticos.'],
             ['nombre' => 'Hersil', 'descripcion' => 'Laboratorio peruano de medicamentos.'],
-            ['nombre' => 'Farmindustria', 'descripcion' => 'Laboratorio farmacÃ©utico nacional.'],
+            ['nombre' => 'Farmindustria', 'descripcion' => 'Laboratorio farmacÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©utico nacional.'],
             ['nombre' => 'Bayer', 'descripcion' => 'Laboratorio multinacional.'],
             ['nombre' => 'Pfizer', 'descripcion' => 'Laboratorio multinacional.'],
             ['nombre' => 'GlaxoSmithKline', 'descripcion' => 'Laboratorio multinacional.'],
-            ['nombre' => 'Abbott', 'descripcion' => 'Laboratorio de medicamentos y nutriciÃ³n.'],
+            ['nombre' => 'Abbott', 'descripcion' => 'Laboratorio de medicamentos y nutriciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n.'],
         ] as $item) {
             Laboratorio::create(array_merge($base, $item));
         }
 
         foreach ([
-            ['nombre' => 'Paracetamol', 'descripcion' => 'AnalgÃ©sico y antipirÃ©tico.'],
+            ['nombre' => 'Paracetamol', 'descripcion' => 'AnalgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sico y antipirÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©tico.'],
             ['nombre' => 'Ibuprofeno', 'descripcion' => 'Antiinflamatorio no esteroideo.'],
-            ['nombre' => 'Naproxeno', 'descripcion' => 'Antiinflamatorio y analgÃ©sico.'],
-            ['nombre' => 'Amoxicilina', 'descripcion' => 'AntibiÃ³tico betalactÃ¡mico.'],
-            ['nombre' => 'Azitromicina', 'descripcion' => 'AntibiÃ³tico macrÃ³lido.'],
-            ['nombre' => 'Loratadina', 'descripcion' => 'AntihistamÃ­nico.'],
+            ['nombre' => 'Naproxeno', 'descripcion' => 'Antiinflamatorio y analgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sico.'],
+            ['nombre' => 'Amoxicilina', 'descripcion' => 'AntibiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³tico betalactÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡mico.'],
+            ['nombre' => 'Azitromicina', 'descripcion' => 'AntibiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³tico macrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³lido.'],
+            ['nombre' => 'Loratadina', 'descripcion' => 'AntihistamÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nico.'],
             ['nombre' => 'Omeprazol', 'descripcion' => 'Inhibidor de bomba de protones.'],
-            ['nombre' => 'Clotrimazol', 'descripcion' => 'AntimicÃ³tico.'],
+            ['nombre' => 'Clotrimazol', 'descripcion' => 'AntimicÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³tico.'],
         ] as $item) {
             PrincipioActivo::create(array_merge($base, $item));
         }
 
         foreach ([
-            ['nombre' => 'AnalgÃ©sico', 'descripcion' => 'Alivio del dolor.'],
-            ['nombre' => 'AntipirÃ©tico', 'descripcion' => 'ReducciÃ³n de fiebre.'],
-            ['nombre' => 'Antiinflamatorio', 'descripcion' => 'ReducciÃ³n de inflamaciÃ³n.'],
+            ['nombre' => 'AnalgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sico', 'descripcion' => 'Alivio del dolor.'],
+            ['nombre' => 'AntipirÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©tico', 'descripcion' => 'ReducciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n de fiebre.'],
+            ['nombre' => 'Antiinflamatorio', 'descripcion' => 'ReducciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n de inflamaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n.'],
             ['nombre' => 'Antibacteriano', 'descripcion' => 'Tratamiento de infecciones bacterianas.'],
-            ['nombre' => 'AntihistamÃ­nico', 'descripcion' => 'Alivio de alergias.'],
-            ['nombre' => 'AntiÃ¡cido', 'descripcion' => 'Tratamiento de acidez gÃ¡strica.'],
-            ['nombre' => 'AntimicÃ³tico', 'descripcion' => 'Tratamiento de hongos.'],
-            ['nombre' => 'Suplemento nutricional', 'descripcion' => 'Apoyo nutricional y vitamÃ­nico.'],
+            ['nombre' => 'AntihistamÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nico', 'descripcion' => 'Alivio de alergias.'],
+            ['nombre' => 'AntiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡cido', 'descripcion' => 'Tratamiento de acidez gÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡strica.'],
+            ['nombre' => 'AntimicÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³tico', 'descripcion' => 'Tratamiento de hongos.'],
+            ['nombre' => 'Suplemento nutricional', 'descripcion' => 'Apoyo nutricional y vitamÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­nico.'],
         ] as $item) {
             AccionTerapeutica::create(array_merge($base, $item));
         }
@@ -242,7 +244,7 @@ class DatabaseSeeder extends Seeder
         foreach ([
             ['nombre' => 'Unidad', 'abreviatura' => 'UND'],
             ['nombre' => 'Caja', 'abreviatura' => 'CAJ'],
-            ['nombre' => 'BlÃ­ster', 'abreviatura' => 'BLI'],
+            ['nombre' => 'BlÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ster', 'abreviatura' => 'BLI'],
             ['nombre' => 'Frasco', 'abreviatura' => 'FCO'],
             ['nombre' => 'Tubo', 'abreviatura' => 'TUB'],
             ['nombre' => 'Sobre', 'abreviatura' => 'SOB'],
@@ -352,6 +354,16 @@ class DatabaseSeeder extends Seeder
             ['name' => 'sunat.documentos.descargar', 'label' => 'Descargar documentos SUNAT', 'description' => 'Descargar PDF, tickets, XML y CDR'],
             ['name' => 'sunat.notas.ver', 'label' => 'Ver notas electronicas', 'description' => 'Consultar notas de credito y debito'],
             ['name' => 'sunat.notas.crear', 'label' => 'Crear notas electronicas', 'description' => 'Generar notas de credito y debito'],
+            ['name' => 'notas_credito.enviar_sunat', 'label' => 'Enviar notas de credito a SUNAT', 'description' => 'Enviar notas de credito electronicas a SUNAT'],
+            ['name' => 'notas_credito.reenviar_sunat', 'label' => 'Reenviar notas de credito a SUNAT', 'description' => 'Reintentar envio SUNAT de notas de credito'],
+            ['name' => 'notas_credito.descargar_xml', 'label' => 'Descargar XML de notas de credito', 'description' => 'Descargar XML privado de notas de credito'],
+            ['name' => 'notas_credito.descargar_cdr', 'label' => 'Descargar CDR de notas de credito', 'description' => 'Descargar CDR privado de notas de credito'],
+            ['name' => 'notas_credito.cdr.descargar', 'label' => 'Descargar CDR de notas de credito', 'description' => 'Descargar CDR privado de notas de credito'],
+            ['name' => 'notas_credito.xml.descargar', 'label' => 'Descargar XML de notas de credito', 'description' => 'Descargar XML privado de notas de credito'],
+            ['name' => 'notas_credito.ticket.descargar', 'label' => 'Descargar ticket de notas de credito', 'description' => 'Descargar ticket 80mm privado de notas de credito'],
+            ['name' => 'notas_credito.ticket.generar', 'label' => 'Generar ticket de notas de credito', 'description' => 'Generar ticket 80mm privado de notas de credito'],
+            ['name' => 'notas_credito.pdf.descargar', 'label' => 'Descargar PDF de notas de credito', 'description' => 'Descargar PDF A4 privado de notas de credito'],
+            ['name' => 'notas_credito.pdf.generar', 'label' => 'Generar PDF de notas de credito', 'description' => 'Generar PDF A4 privado de notas de credito'],
             ['name' => 'sunat.resumenes.ver', 'label' => 'Ver resumenes diarios', 'description' => 'Consultar resumenes diarios de boletas'],
             ['name' => 'sunat.resumenes.generar', 'label' => 'Generar resumenes diarios', 'description' => 'Generar, enviar y consultar resumenes diarios'],
             ['name' => 'sunat.bajas.ver', 'label' => 'Ver comunicaciones de baja', 'description' => 'Consultar comunicaciones de baja'],
@@ -535,6 +547,7 @@ class DatabaseSeeder extends Seeder
         }
     }
 }
+
 
 
 

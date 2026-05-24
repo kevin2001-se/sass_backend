@@ -16,7 +16,9 @@ class SeriesComprobantesSeeder extends Seeder
                 ['tipo_comprobante' => 'BOLETA', 'serie' => 'B001'],
                 ['tipo_comprobante' => 'FACTURA', 'serie' => 'F001'],
                 ['tipo_comprobante' => 'NOTA_CREDITO', 'serie' => 'FC01'],
+                ['tipo_comprobante' => 'NOTA_CREDITO', 'serie' => 'BC01'],
                 ['tipo_comprobante' => 'NOTA_DEBITO', 'serie' => 'FD01'],
+                ['tipo_comprobante' => 'NOTA_DEBITO', 'serie' => 'BD01'],
                 ['tipo_comprobante' => 'GUIA_REMISION', 'serie' => 'T001'],
             ];
 
