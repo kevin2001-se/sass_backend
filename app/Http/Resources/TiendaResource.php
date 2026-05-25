@@ -15,6 +15,8 @@ class TiendaResource extends JsonResource
             'nombre' => $this->nombre,
             'codigo' => $this->codigo,
             'direccion' => $this->direccion,
+            'ubigeo' => $this->ubigeo,
+            'telefono' => $this->telefono,
             'estado' => (bool) $this->estado,
         ];
     }

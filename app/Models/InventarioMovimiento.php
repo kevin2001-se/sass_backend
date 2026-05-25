@@ -16,6 +16,7 @@ class InventarioMovimiento extends Model
     public const AJUSTE_NEGATIVO = 'AJUSTE_NEGATIVO';
     public const VENTA = 'VENTA';
     public const COMPRA = 'COMPRA';
+    public const ENTRADA_COMPRA = 'ENTRADA_COMPRA';
     public const DEVOLUCION = 'DEVOLUCION';
 
     public $timestamps = false;
