@@ -10,7 +10,12 @@ use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\ComprobanteElectronicoController;
 use App\Http\Controllers\Api\ComunicacionBajaController;
 use App\Http\Controllers\Api\CompraController;
-use App\Http\Controllers\Api\CuentaPorPagarController;
+use App\Http\Controllers\Api\CompraDocumentoController;
+use App\Http\Controllers\Api\ConfiguracionEmpresaController;
+use App\Http\Controllers\Api\PermisoController;
+use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\TiendaController;
+use App\Http\Controllers\Api\UsuarioController;use App\Http\Controllers\Api\CuentaPorPagarController;
 use App\Http\Controllers\Api\CuentaPorCobrarController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentoElectronicoController;
@@ -63,6 +68,32 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::get('tiendas/mis-tiendas', [UserTiendaController::class, 'misTiendas']);
     Route::post('tiendas/seleccionar', [UserTiendaController::class, 'seleccionar']);
     Route::get('dashboard/resumen', [DashboardController::class, 'resumen'])->middleware(['resolve.tienda', 'permission:dashboard.ver']);
+    Route::get('configuracion/empresa', [ConfiguracionEmpresaController::class, 'show'])->middleware('permission:configuracion.empresa.ver');
+    Route::put('configuracion/empresa', [ConfiguracionEmpresaController::class, 'update'])->middleware('permission:configuracion.empresa.editar');
+    Route::post('configuracion/empresa', [ConfiguracionEmpresaController::class, 'update'])->middleware('permission:configuracion.empresa.editar');
+    Route::get('configuracion/empresa/logo', [ConfiguracionEmpresaController::class, 'logo'])->middleware('permission:configuracion.empresa.ver');
+
+    Route::get('tiendas', [TiendaController::class, 'index'])->middleware('permission:tiendas.ver');
+    Route::post('tiendas', [TiendaController::class, 'store'])->middleware('permission:tiendas.crear');
+    Route::get('tiendas/{tienda}', [TiendaController::class, 'show'])->middleware('permission:tiendas.ver');
+    Route::put('tiendas/{tienda}', [TiendaController::class, 'update'])->middleware('permission:tiendas.editar');
+    Route::patch('tiendas/{tienda}', [TiendaController::class, 'update'])->middleware('permission:tiendas.editar');
+    Route::delete('tiendas/{tienda}', [TiendaController::class, 'destroy'])->middleware('permission:tiendas.eliminar');
+
+    Route::get('usuarios', [UsuarioController::class, 'index'])->middleware('permission:usuarios.ver');
+    Route::post('usuarios', [UsuarioController::class, 'store'])->middleware('permission:usuarios.crear');
+    Route::get('usuarios/{usuario}', [UsuarioController::class, 'show'])->middleware('permission:usuarios.ver');
+    Route::put('usuarios/{usuario}', [UsuarioController::class, 'update'])->middleware('permission:usuarios.editar');
+    Route::patch('usuarios/{usuario}', [UsuarioController::class, 'update'])->middleware('permission:usuarios.editar');
+    Route::delete('usuarios/{usuario}', [UsuarioController::class, 'destroy'])->middleware('permission:usuarios.eliminar');
+
+    Route::get('roles', [RoleController::class, 'index'])->middleware('permission:roles.ver');
+    Route::post('roles', [RoleController::class, 'store'])->middleware('permission:roles.crear');
+    Route::get('roles/{role}', [RoleController::class, 'show'])->middleware('permission:roles.ver');
+    Route::put('roles/{role}', [RoleController::class, 'update'])->middleware('permission:roles.editar');
+    Route::patch('roles/{role}', [RoleController::class, 'update'])->middleware('permission:roles.editar');
+    Route::delete('roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:roles.eliminar');
+    Route::get('permisos', [PermisoController::class, 'index'])->middleware('permission:roles.ver');
 
     Route::get('dashboard', function () {
         return response()->json(['message' => 'Dashboard cargado con exito.']);
@@ -145,11 +176,12 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::patch('clientes/{cliente}', [ClienteController::class, 'update'])->middleware('permission:ventas.crear');
     Route::delete('clientes/{cliente}', [ClienteController::class, 'destroy'])->middleware('permission:ventas.crear');
 
-    Route::get('series-comprobantes', [SerieComprobanteController::class, 'index'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
-    Route::post('series-comprobantes', [SerieComprobanteController::class, 'store'])->middleware(['resolve.tienda', 'permission:ventas.crear']);
-    Route::put('series-comprobantes/{serie_comprobante}', [SerieComprobanteController::class, 'update'])->middleware(['resolve.tienda', 'permission:ventas.crear']);
-    Route::patch('series-comprobantes/{serie_comprobante}', [SerieComprobanteController::class, 'update'])->middleware(['resolve.tienda', 'permission:ventas.crear']);
-    Route::delete('series-comprobantes/{serie_comprobante}', [SerieComprobanteController::class, 'destroy'])->middleware(['resolve.tienda', 'permission:ventas.crear']);
+    Route::get('series-comprobantes', [SerieComprobanteController::class, 'index'])->middleware('permission:series.ver');
+    Route::post('series-comprobantes', [SerieComprobanteController::class, 'store'])->middleware('permission:series.crear');
+    Route::get('series-comprobantes/{serie_comprobante}', [SerieComprobanteController::class, 'show'])->middleware('permission:series.ver');
+    Route::put('series-comprobantes/{serie_comprobante}', [SerieComprobanteController::class, 'update'])->middleware('permission:series.editar');
+    Route::patch('series-comprobantes/{serie_comprobante}', [SerieComprobanteController::class, 'update'])->middleware('permission:series.editar');
+    Route::delete('series-comprobantes/{serie_comprobante}', [SerieComprobanteController::class, 'destroy'])->middleware('permission:series.eliminar');
 
     Route::get('ventas', [VentaController::class, 'index'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
     Route::post('ventas', [VentaController::class, 'store'])->middleware(['resolve.tienda', 'permission:ventas.crear']);
@@ -231,17 +263,19 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::post('caja-movimientos/ingreso', [CajaMovimientoController::class, 'ingreso'])->middleware(['resolve.tienda', 'permission:caja.ingreso']);
     Route::post('caja-movimientos/egreso', [CajaMovimientoController::class, 'egreso'])->middleware(['resolve.tienda', 'permission:caja.egreso']);
 
-    Route::get('proveedores', [ProveedorController::class, 'index'])->middleware('permission:compras.ver');
-    Route::post('proveedores', [ProveedorController::class, 'store'])->middleware('permission:compras.crear');
-    Route::get('proveedores/{proveedor}', [ProveedorController::class, 'show'])->middleware('permission:compras.ver');
-    Route::put('proveedores/{proveedor}', [ProveedorController::class, 'update'])->middleware('permission:compras.crear');
-    Route::patch('proveedores/{proveedor}', [ProveedorController::class, 'update'])->middleware('permission:compras.crear');
-    Route::delete('proveedores/{proveedor}', [ProveedorController::class, 'destroy'])->middleware('permission:compras.crear');
+    Route::get('proveedores', [ProveedorController::class, 'index'])->middleware('permission:proveedores.ver');
+    Route::post('proveedores', [ProveedorController::class, 'store'])->middleware('permission:proveedores.crear');
+    Route::get('proveedores/{proveedor}', [ProveedorController::class, 'show'])->middleware('permission:proveedores.ver');
+    Route::put('proveedores/{proveedor}', [ProveedorController::class, 'update'])->middleware('permission:proveedores.editar');
+    Route::patch('proveedores/{proveedor}', [ProveedorController::class, 'update'])->middleware('permission:proveedores.editar');
+    Route::delete('proveedores/{proveedor}', [ProveedorController::class, 'destroy'])->middleware('permission:proveedores.eliminar');
 
     Route::get('compras', [CompraController::class, 'index'])->middleware(['resolve.tienda', 'permission:compras.ver']);
     Route::post('compras', [CompraController::class, 'store'])->middleware(['resolve.tienda', 'permission:compras.crear']);
     Route::get('compras/{compra}', [CompraController::class, 'show'])->middleware(['resolve.tienda', 'permission:compras.ver']);
-    Route::post('compras/{compra}/anular', [CompraController::class, 'anular'])->middleware(['resolve.tienda', 'permission:compras.crear']);
+    Route::post('compras/{compra}/anular', [CompraController::class, 'anular'])->middleware(['resolve.tienda', 'permission:compras.anular']);
+    Route::post('compras/{compra}/generar-pdf', [CompraDocumentoController::class, 'generarPdf'])->middleware(['resolve.tienda', 'permission:compras.pdf.ver']);
+    Route::get('compras/{compra}/pdf', [CompraDocumentoController::class, 'pdf'])->middleware(['resolve.tienda', 'permission:compras.pdf.ver']);
 
     Route::get('cuentas-por-pagar', [CuentaPorPagarController::class, 'index'])->middleware(['resolve.tienda', 'permission:compras.ver']);
     Route::get('cuentas-por-pagar/{cuenta}', [CuentaPorPagarController::class, 'show'])->middleware(['resolve.tienda', 'permission:compras.ver']);

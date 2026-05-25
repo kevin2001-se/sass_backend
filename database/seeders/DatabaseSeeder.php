@@ -340,7 +340,7 @@ class DatabaseSeeder extends Seeder
             'unidades_medida.ver' => 'Ver unidades de medida', 'unidades_medida.crear' => 'Crear unidades de medida', 'unidades_medida.editar' => 'Editar unidades de medida', 'unidades_medida.eliminar' => 'Eliminar unidades de medida',
             'ventas.ver' => 'Ver ventas', 'ventas.crear' => 'Crear ventas', 'ventas.imprimir' => 'Imprimir ventas', 'ventas.exportar' => 'Exportar ventas',
             'caja.ver' => 'Ver caja', 'caja.aperturar' => 'Aperturar caja', 'caja.cerrar' => 'Cerrar caja', 'caja.ingreso' => 'Registrar ingresos de caja', 'caja.egreso' => 'Registrar egresos de caja', 'caja.historial' => 'Ver historial de caja',
-            'compras.ver' => 'Ver compras', 'compras.crear' => 'Crear compras',
+            'compras.ver' => 'Ver compras', 'compras.crear' => 'Crear compras', 'compras.anular' => 'Anular compras', 'compras.pdf.ver' => 'Ver PDF compras', 'proveedores.ver' => 'Ver proveedores', 'proveedores.crear' => 'Crear proveedores', 'proveedores.editar' => 'Editar proveedores', 'proveedores.eliminar' => 'Eliminar proveedores',
             'inventario.ver' => 'Ver inventario', 'inventario.entrada' => 'Entrada de inventario', 'inventario.salida' => 'Salida de inventario', 'inventario.ajuste' => 'Ajuste de inventario', 'inventario.kardex' => 'Ver kardex',
             'lotes.ver' => 'Ver lotes', 'lotes.crear' => 'Crear lotes', 'lotes.editar' => 'Editar lotes', 'lotes.eliminar' => 'Eliminar lotes',
             'reportes.ver' => 'Ver reportes',
@@ -353,6 +353,12 @@ class DatabaseSeeder extends Seeder
             'sunat.guias.ver' => 'Ver guias de remision', 'sunat.guias.crear' => 'Crear guias de remision',
             'guias.crear' => 'Crear guias de remision', 'guias.enviar_sunat' => 'Enviar guias a SUNAT', 'guias.reenviar_sunat' => 'Reenviar guias a SUNAT', 'guias.descargar_xml' => 'Descargar XML de guias', 'guias.descargar_cdr' => 'Descargar CDR de guias', 'guias.pdf.generar' => 'Generar PDF de guias', 'guias.pdf.descargar' => 'Descargar PDF de guias', 'guias.ticket.generar' => 'Generar ticket de guias', 'guias.ticket.descargar' => 'Descargar ticket de guias',
             'comprobantes.notas_venta.ver' => 'Ver notas de venta',
+            'comprobantes.ver' => 'Ver modulo comprobantes',
+            'configuracion.empresa.ver' => 'Ver configuracion de empresa', 'configuracion.empresa.editar' => 'Editar configuracion de empresa',
+            'tiendas.ver' => 'Ver tiendas', 'tiendas.crear' => 'Crear tiendas', 'tiendas.editar' => 'Editar tiendas', 'tiendas.eliminar' => 'Eliminar tiendas',
+            'usuarios.ver' => 'Ver usuarios', 'usuarios.crear' => 'Crear usuarios', 'usuarios.editar' => 'Editar usuarios', 'usuarios.eliminar' => 'Eliminar usuarios',
+            'roles.ver' => 'Ver roles y permisos', 'roles.crear' => 'Crear roles', 'roles.editar' => 'Editar roles', 'roles.eliminar' => 'Eliminar roles',
+            'series.ver' => 'Ver series', 'series.crear' => 'Crear series', 'series.editar' => 'Editar series', 'series.eliminar' => 'Eliminar series',
         ];
 
         return collect($permissions)->map(function (string $label, string $name) {
@@ -368,11 +374,12 @@ class DatabaseSeeder extends Seeder
         $roles = [
             'Administrador' => $permissions->pluck('id')->all(),
             'Supervisor' => $this->permissionIds([
-                'dashboard.ver', 'productos.ver', 'ventas.ver', 'ventas.imprimir', 'ventas.exportar', 'caja.ver', 'caja.historial', 'compras.ver', 'reportes.ver',
+                'dashboard.ver', 'productos.ver', 'ventas.ver', 'ventas.imprimir', 'ventas.exportar', 'caja.ver', 'caja.historial', 'compras.ver', 'compras.anular', 'compras.pdf.ver', 'proveedores.ver', 'proveedores.crear', 'proveedores.editar', 'reportes.ver',
                 'sunat.ver', 'sunat.configuracion.ver', 'sunat.comprobantes.ver', 'sunat.documentos.descargar', 'sunat.notas.ver', 'sunat.notas.crear',
                 'notas_credito.ver', 'notas_credito.crear', 'notas_debito.ver', 'notas_debito.crear',
                 'sunat.resumenes.ver', 'sunat.bajas.ver', 'sunat.guias.ver', 'sunat.guias.crear',
                 'guias.crear', 'guias.enviar_sunat', 'guias.reenviar_sunat', 'guias.descargar_xml', 'guias.descargar_cdr', 'guias.pdf.generar', 'guias.pdf.descargar', 'guias.ticket.generar', 'guias.ticket.descargar',
+                'configuracion.empresa.ver', 'configuracion.empresa.editar', 'tiendas.ver', 'tiendas.crear', 'tiendas.editar', 'usuarios.ver', 'usuarios.crear', 'usuarios.editar', 'roles.ver', 'roles.crear', 'roles.editar', 'series.ver', 'series.crear', 'series.editar',
                 'inventario.ver', 'inventario.entrada', 'inventario.salida', 'inventario.ajuste', 'inventario.kardex', 'lotes.ver', 'lotes.crear', 'lotes.editar', 'lotes.eliminar',
                 'categorias.ver', 'marcas.ver', 'laboratorios.ver', 'principios_activos.ver', 'acciones_terapeuticas.ver', 'unidades_medida.ver',
             ]),
@@ -381,7 +388,7 @@ class DatabaseSeeder extends Seeder
                 'sunat.comprobantes.ver', 'sunat.documentos.descargar', 'sunat.notas.ver', 'notas_credito.ver', 'notas_debito.ver', 'inventario.ver', 'lotes.ver',
             ]),
             'Almacenero' => $this->permissionIds([
-                'dashboard.ver', 'productos.ver', 'productos.crear', 'productos.editar', 'productos.eliminar', 'compras.ver', 'compras.crear',
+                'dashboard.ver', 'productos.ver', 'productos.crear', 'productos.editar', 'productos.eliminar', 'compras.ver', 'compras.crear', 'compras.anular', 'compras.pdf.ver', 'proveedores.ver', 'proveedores.crear', 'proveedores.editar',
                 'inventario.ver', 'inventario.entrada', 'inventario.salida', 'inventario.ajuste', 'inventario.kardex', 'lotes.ver', 'lotes.crear', 'lotes.editar', 'lotes.eliminar',
                 'categorias.ver', 'categorias.crear', 'categorias.editar', 'marcas.ver', 'marcas.crear', 'marcas.editar', 'laboratorios.ver', 'laboratorios.crear', 'laboratorios.editar',
                 'principios_activos.ver', 'principios_activos.crear', 'principios_activos.editar', 'acciones_terapeuticas.ver', 'acciones_terapeuticas.crear', 'acciones_terapeuticas.editar', 'unidades_medida.ver', 'unidades_medida.crear', 'unidades_medida.editar',
@@ -420,6 +427,7 @@ class DatabaseSeeder extends Seeder
                     'role_id' => $roles[$data['role']]->id,
                     'name' => $data['name'],
                     'password' => Hash::make('password123'),
+                    'estado' => true,
                 ]
             );
 

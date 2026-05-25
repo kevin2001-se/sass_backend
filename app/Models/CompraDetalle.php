@@ -12,7 +12,7 @@ class CompraDetalle extends Model
 
     protected $table = 'compra_detalles';
 
-    protected $fillable = ['tenant_id', 'empresa_id', 'compra_id', 'producto_id', 'producto_presentacion_id', 'lote_id', 'descripcion', 'cantidad_presentacion', 'factor_conversion', 'cantidad_base', 'precio_unitario', 'descuento', 'afecto_igv', 'subtotal', 'igv', 'total'];
+    protected $fillable = ['tenant_id', 'empresa_id', 'compra_id', 'producto_id', 'producto_presentacion_id', 'lote_id', 'descripcion', 'cantidad_presentacion', 'factor_conversion', 'cantidad_base', 'precio_unitario', 'descuento', 'afecto_igv', 'subtotal', 'igv', 'total', 'fecha_vencimiento'];
 
     protected function casts(): array
     {
@@ -26,6 +26,7 @@ class CompraDetalle extends Model
             'subtotal' => 'decimal:2',
             'igv' => 'decimal:2',
             'total' => 'decimal:2',
+            'fecha_vencimiento' => 'date',
         ];
     }
 
@@ -34,3 +35,4 @@ class CompraDetalle extends Model
     public function presentacion(): BelongsTo { return $this->belongsTo(ProductoPresentacion::class, 'producto_presentacion_id'); }
     public function lote(): BelongsTo { return $this->belongsTo(Lote::class); }
 }
+

@@ -11,6 +11,8 @@ class Proveedor extends Model
 {
     use HasFactory;
 
+    protected $table = 'proveedores';
+
     protected $fillable = ['tenant_id', 'empresa_id', 'tipo_documento', 'numero_documento', 'razon_social', 'nombre_comercial', 'direccion', 'telefono', 'email', 'estado'];
 
     protected function casts(): array

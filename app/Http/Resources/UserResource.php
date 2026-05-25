@@ -12,6 +12,7 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'estado' => (bool) ($this->estado ?? true),
             'role' => $this->role ? [
                 'id' => $this->role->id,
                 'name' => $this->role->name,
@@ -36,6 +37,7 @@ class UserResource extends JsonResource
                 'nombre' => $this->tiendaActiva->nombre,
                 'direccion' => $this->tiendaActiva->direccion,
             ] : null,
+            'tiendas' => TiendaResource::collection($this->whenLoaded('tiendas')),
             'tiendas_disponibles' => TiendaResource::collection($this->whenLoaded('tiendasActivas')),
             'created_at' => $this->created_at?->toDateTimeString(),
         ];

@@ -17,13 +17,39 @@ class Compra extends Model
     public const REGISTRADA = 'REGISTRADA';
     public const ANULADA = 'ANULADA';
 
-    protected $fillable = ['tenant_id', 'empresa_id', 'tienda_id', 'proveedor_id', 'user_id', 'tipo_comprobante', 'serie', 'numero', 'tipo_compra', 'fecha_emision', 'fecha_vencimiento', 'subtotal', 'total_igv', 'total_descuento', 'total', 'estado', 'observacion'];
+    protected $fillable = [
+        'tenant_id',
+        'empresa_id',
+        'tienda_id',
+        'proveedor_id',
+        'user_id',
+        'created_by',
+        'updated_by',
+        'anulado_by',
+        'tipo_comprobante',
+        'serie',
+        'numero',
+        'tipo_compra',
+        'moneda',
+        'fecha_emision',
+        'fecha_vencimiento',
+        'subtotal',
+        'total_igv',
+        'total_descuento',
+        'total',
+        'estado',
+        'observacion',
+        'motivo_anulacion',
+        'anulado_at',
+    ];
 
     protected function casts(): array
     {
         return [
             'fecha_emision' => 'date',
             'fecha_vencimiento' => 'date',
+            'anulado_at' => 'datetime',
+            'pdf_generado_at' => 'datetime',
             'subtotal' => 'decimal:2',
             'total_igv' => 'decimal:2',
             'total_descuento' => 'decimal:2',
@@ -36,8 +62,12 @@ class Compra extends Model
     public function tienda(): BelongsTo { return $this->belongsTo(Tienda::class); }
     public function proveedor(): BelongsTo { return $this->belongsTo(Proveedor::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function creadoPor(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
+    public function actualizadoPor(): BelongsTo { return $this->belongsTo(User::class, 'updated_by'); }
+    public function anuladoPor(): BelongsTo { return $this->belongsTo(User::class, 'anulado_by'); }
     public function detalles(): HasMany { return $this->hasMany(CompraDetalle::class); }
     public function pagos(): HasMany { return $this->hasMany(CompraPago::class); }
     public function cuentaPorPagar(): HasOne { return $this->hasOne(CuentaPorPagar::class); }
     public function guiasRemision(): HasMany { return $this->hasMany(GuiaRemision::class); }
+    public function movimientosInventario(): HasMany { return $this->hasMany(InventarioMovimiento::class, 'referencia_id')->where('referencia_tipo', 'COMPRA'); }
 }

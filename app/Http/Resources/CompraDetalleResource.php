@@ -20,12 +20,14 @@ class CompraDetalleResource extends JsonResource
             'cantidad_presentacion' => $this->cantidad_presentacion,
             'factor_conversion' => $this->factor_conversion,
             'cantidad_base' => $this->cantidad_base,
+            'costo_unitario' => $this->precio_unitario,
             'precio_unitario' => $this->precio_unitario,
             'descuento' => $this->descuento,
             'afecto_igv' => $this->afecto_igv,
             'subtotal' => $this->subtotal,
             'igv' => $this->igv,
             'total' => $this->total,
+            'fecha_vencimiento' => $this->fecha_vencimiento?->toDateString(),
         ];
     }
 }
