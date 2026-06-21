@@ -12,7 +12,7 @@ class PosProductoService
     {
         $query = trim((string) $query);
         $today = Carbon::today();
-        $metodoSalida = strtoupper((string) parametro('metodo_salida', 'FEFO'));
+        $metodoSalida = strtoupper((string) \parametro('metodo_salida', 'FEFO'));
 
         $productos = Producto::query()
             ->with([

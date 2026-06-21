@@ -33,7 +33,7 @@ class ParametroService
             ->first();
 
         if (! $parametro) {
-            $parametro = new Parametro([
+            $parametro = new \parametro([
                 'tenant_id' => $tenantId,
                 'empresa_id' => $empresaId,
                 'clave' => $clave,

@@ -73,7 +73,7 @@ class CompraService
                 'serie' => strtoupper($data['serie']),
                 'numero' => (string) $data['numero'],
                 'tipo_compra' => $data['tipo_compra'],
-                'moneda' => $data['moneda'] ?? parametro('moneda_default', 'PEN'),
+                'moneda' => $data['moneda'] ?? \parametro('moneda_default', 'PEN'),
                 'fecha_emision' => $data['fecha_emision'],
                 'fecha_vencimiento' => $data['fecha_vencimiento'] ?? null,
                 'subtotal' => $totales['subtotal'],
@@ -89,7 +89,7 @@ class CompraService
                 $this->registrarEntradaInventario($compra, $detalle, $data);
             }
 
-            if ($compra->tipo_compra === Compra::CREDITO && (bool) parametro('crear_cxp_automaticamente', true)) {
+            if ($compra->tipo_compra === Compra::CREDITO && (bool) \parametro('crear_cxp_automaticamente', true)) {
                 $this->cuentaPorPagarService->crearDesdeCompra($compra);
             } elseif ($compra->tipo_compra === Compra::CREDITO) {
                 Log::info('Parametro crear_cxp_automaticamente desactivado: compra credito sin CxP automatica.', [
