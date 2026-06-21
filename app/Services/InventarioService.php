@@ -10,6 +10,7 @@ use App\Models\Stock;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class InventarioService
@@ -50,7 +51,7 @@ class InventarioService
             ->where('producto_id', $productoId)
             ->orderByRaw('lote_id IS NULL DESC')
             ->get()
-            ->sortBy(fn (Stock $stock) => $stock->lote?->fecha_vencimiento?->toDateString() ?? '9999-12-31')
+            ->sortBy(fn (Stock $stock) => $this->stockSortKey($stock))
             ->values();
     }
 
@@ -92,9 +93,20 @@ class InventarioService
             ? $stockAnterior + $cantidadBase
             : $stockAnterior - $cantidadBase;
 
-        if ($stockNuevo < 0) {
+        if ($stockNuevo < 0 && ! ($data['permitir_stock_negativo'] ?? false)) {
             throw ValidationException::withMessages([
                 'cantidad_presentacion' => ['No hay stock suficiente. El stock no puede quedar negativo.'],
+            ]);
+        }
+
+        if ($stockNuevo < 0) {
+            Log::info('Parametro permitir_venta_sin_stock activo: stock negativo permitido.', [
+                'producto_id' => $producto->id,
+                'lote_id' => $lote?->id,
+                'stock_anterior' => $stockAnterior,
+                'stock_nuevo' => $stockNuevo,
+                'referencia_tipo' => $data['referencia_tipo'] ?? null,
+                'referencia_id' => $data['referencia_id'] ?? null,
             ]);
         }
 
@@ -125,6 +137,17 @@ class InventarioService
         ]);
     }
 
+    protected function stockSortKey(Stock $stock): string
+    {
+        $metodoSalida = strtoupper((string) parametro('metodo_salida', 'FEFO'));
+
+        if ($metodoSalida === 'FIFO') {
+            return $stock->created_at?->toDateTimeString() ?? '9999-12-31 23:59:59';
+        }
+
+        return $stock->lote?->fecha_vencimiento?->toDateString() ?? '9999-12-31';
+    }
+
     protected function obtenerProducto(array $data): Producto
     {
         $producto = Producto::where('tenant_id', $data['tenant_id'])
@@ -149,7 +172,7 @@ class InventarioService
 
         if (! $presentacion) {
             throw ValidationException::withMessages([
-                'producto_presentacion_id' => ['La presentaciÃ³n no pertenece al producto indicado.'],
+                'producto_presentacion_id' => ['La presentacion no pertenece al producto indicado.'],
             ]);
         }
 
@@ -204,7 +227,7 @@ class InventarioService
 
         if ($lote->fecha_vencimiento->lt(today())) {
             throw ValidationException::withMessages([
-                'lote_id' => ['No se puede retirar stock de un lote vencido. Use FEFO seleccionando primero lotes vigentes con vencimiento mÃ¡s prÃ³ximo.'],
+                'lote_id' => ['No se puede retirar stock de un lote vencido. Use FEFO seleccionando primero lotes vigentes con vencimiento mas proximo.'],
             ]);
         }
     }

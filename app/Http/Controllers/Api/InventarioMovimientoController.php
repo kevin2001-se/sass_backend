@@ -8,13 +8,16 @@ use App\Http\Requests\InventarioEntradaRequest;
 use App\Http\Requests\InventarioSalidaRequest;
 use App\Http\Resources\InventarioMovimientoResource;
 use App\Models\InventarioMovimiento;
+use App\Services\InventarioCargaMasivaService;
 use App\Services\InventarioService;
 use Illuminate\Http\Request;
 
 class InventarioMovimientoController extends Controller
 {
-    public function __construct(private readonly InventarioService $inventarioService)
-    {
+    public function __construct(
+        private readonly InventarioService $inventarioService,
+        private readonly InventarioCargaMasivaService $cargaMasivaService,
+    ) {
     }
 
     public function index(Request $request)
@@ -54,6 +57,42 @@ class InventarioMovimientoController extends Controller
         return (new InventarioMovimientoResource($this->loadMovimiento($movimiento)))->response()->setStatusCode(201);
     }
 
+
+
+    public function plantillaCargaMasiva(Request $request, string $tipo)
+    {
+        abort_unless(in_array($tipo, ['entrada', 'salida', 'ajuste'], true), 404);
+
+        return $this->cargaMasivaService->plantilla($tipo, $this->scopePayload($request));
+    }
+    public function cargaMasiva(Request $request, string $tipo)
+    {
+        abort_unless(in_array($tipo, ['entrada', 'salida', 'ajuste'], true), 404);
+
+        $validated = $request->validate([
+            'archivo' => ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:5120'],
+            'motivo' => ['nullable', 'string', 'max:255'],
+            'tipo_ajuste' => ['nullable', 'in:POSITIVO,NEGATIVO'],
+        ]);
+
+        if ($tipo === 'ajuste' && empty($validated['tipo_ajuste'])) {
+            $request->validate(['tipo_ajuste' => ['required', 'in:POSITIVO,NEGATIVO']]);
+        }
+
+        $resultado = $this->cargaMasivaService->importarMovimientos(
+            $request->file('archivo'),
+            $tipo,
+            $this->scopePayload($request),
+            $validated
+        );
+
+        return response()->json([
+            'success' => $resultado['total_errores'] === 0,
+            'message' => $resultado['total_errores'] > 0 ? 'Carga masiva procesada con observaciones.' : 'Carga masiva procesada correctamente.',
+            'data' => $resultado,
+        ]);
+    }
+
     public function kardex(Request $request, int $productoId)
     {
         $movimientos = $this->inventarioService->obtenerKardexProducto(
@@ -65,6 +104,17 @@ class InventarioMovimientoController extends Controller
         );
 
         return InventarioMovimientoResource::collection($movimientos);
+    }
+
+
+    protected function scopePayload(Request $request): array
+    {
+        return [
+            'tenant_id' => $request->attributes->get('tenant')->id,
+            'empresa_id' => $request->attributes->get('empresa')->id,
+            'tienda_id' => $request->attributes->get('tienda')->id,
+            'user_id' => $request->user()->id,
+        ];
     }
 
     protected function inventoryPayload(Request $request): array

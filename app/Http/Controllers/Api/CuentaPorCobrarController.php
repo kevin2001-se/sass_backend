@@ -25,6 +25,9 @@ class CuentaPorCobrarController extends Controller
             ->where('tienda_id', $request->attributes->get('tienda')->id)
             ->when($request->filled('estado'), fn ($query) => $query->where('estado', $request->input('estado')))
             ->when($request->filled('cliente_id'), fn ($query) => $query->where('cliente_id', $request->integer('cliente_id')))
+            ->when($request->filled('fecha_inicio'), fn ($query) => $query->whereDate('fecha_emision', '>=', $request->input('fecha_inicio')))
+            ->when($request->filled('fecha_fin'), fn ($query) => $query->whereDate('fecha_emision', '<=', $request->input('fecha_fin')))
+            ->when($request->boolean('vencidas'), fn ($query) => $query->where('estado', CuentaPorCobrar::VENCIDA))
             ->orderBy('fecha_vencimiento')
             ->orderByDesc('id')
             ->paginate($request->integer('per_page', 15));

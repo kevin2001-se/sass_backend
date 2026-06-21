@@ -15,15 +15,16 @@ class CuentaPorCobrarPago extends Model
     protected $fillable = [
         'tenant_id', 'empresa_id', 'tienda_id', 'cuenta_por_cobrar_id', 'caja_id',
         'user_id', 'metodo_pago', 'monto', 'fecha_pago', 'referencia',
-        'observacion', 'estado',
+        'observacion', 'estado', 'anulado_by', 'anulado_at',
     ];
 
     protected function casts(): array
     {
-        return ['monto' => 'decimal:2', 'fecha_pago' => 'date'];
+        return ['monto' => 'decimal:2', 'fecha_pago' => 'date', 'anulado_at' => 'datetime'];
     }
 
     public function cuentaPorCobrar(): BelongsTo { return $this->belongsTo(CuentaPorCobrar::class); }
     public function caja(): BelongsTo { return $this->belongsTo(Caja::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function anuladoPor(): BelongsTo { return $this->belongsTo(User::class, 'anulado_by'); }
 }

@@ -7,10 +7,15 @@ use App\Http\Requests\StoreLoteRequest;
 use App\Http\Requests\UpdateLoteRequest;
 use App\Http\Resources\LoteResource;
 use App\Models\Lote;
+use App\Services\InventarioCargaMasivaService;
 use Illuminate\Http\Request;
 
 class LoteController extends Controller
 {
+    public function __construct(private readonly InventarioCargaMasivaService $cargaMasivaService)
+    {
+    }
+
     public function index(Request $request)
     {
         $lotes = Lote::with(['producto.categoria', 'producto.presentacionPrincipal.unidadMedida', 'stocks' => fn ($query) => $query->where('tenant_id', $request->attributes->get('tenant')->id)->where('empresa_id', $request->attributes->get('empresa')->id)->where('tienda_id', $request->attributes->get('tienda')?->id)])
@@ -36,6 +41,36 @@ class LoteController extends Controller
         return (new LoteResource($lote->load(['producto.categoria', 'producto.presentacionPrincipal.unidadMedida', 'stocks'])))->response()->setStatusCode(201);
     }
 
+
+
+    public function plantillaCargaMasiva(Request $request)
+    {
+        return $this->cargaMasivaService->plantilla('lotes', [
+            'tenant_id' => $request->attributes->get('tenant')->id,
+            'empresa_id' => $request->attributes->get('empresa')->id,
+            'tienda_id' => $request->attributes->get('tienda')?->id,
+            'user_id' => $request->user()->id,
+        ]);
+    }
+    public function cargaMasiva(Request $request)
+    {
+        $validated = $request->validate([
+            'archivo' => ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:5120'],
+        ]);
+
+        $resultado = $this->cargaMasivaService->importarLotes($request->file('archivo'), [
+            'tenant_id' => $request->attributes->get('tenant')->id,
+            'empresa_id' => $request->attributes->get('empresa')->id,
+            'tienda_id' => $request->attributes->get('tienda')?->id,
+            'user_id' => $request->user()->id,
+        ]);
+
+        return response()->json([
+            'success' => $resultado['total_errores'] === 0,
+            'message' => $resultado['total_errores'] > 0 ? 'Carga masiva de lotes procesada con observaciones.' : 'Carga masiva de lotes procesada correctamente.',
+            'data' => $resultado,
+        ]);
+    }
     public function show(Request $request, int $lote)
     {
         return new LoteResource($this->findScoped($request, $lote)->load(['producto.categoria', 'producto.presentacionPrincipal.unidadMedida', 'stocks']));

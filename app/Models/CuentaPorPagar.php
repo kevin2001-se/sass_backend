@@ -15,10 +15,26 @@ class CuentaPorPagar extends Model
 
     public const PENDIENTE = 'PENDIENTE';
     public const PARCIAL = 'PARCIAL';
+    public const PAGADO = 'PAGADO';
     public const PAGADA = 'PAGADA';
+    public const VENCIDO = 'VENCIDO';
+    public const ANULADO = 'ANULADO';
     public const ANULADA = 'ANULADA';
 
-    protected $fillable = ['tenant_id', 'empresa_id', 'tienda_id', 'proveedor_id', 'compra_id', 'monto_total', 'monto_pagado', 'saldo', 'fecha_emision', 'fecha_vencimiento', 'estado'];
+    protected $fillable = [
+        'tenant_id',
+        'empresa_id',
+        'tienda_id',
+        'proveedor_id',
+        'compra_id',
+        'fecha_emision',
+        'fecha_vencimiento',
+        'monto_total',
+        'monto_pagado',
+        'saldo',
+        'estado',
+        'observacion',
+    ];
 
     protected function casts(): array
     {
@@ -36,5 +52,5 @@ class CuentaPorPagar extends Model
     public function tienda(): BelongsTo { return $this->belongsTo(Tienda::class); }
     public function proveedor(): BelongsTo { return $this->belongsTo(Proveedor::class); }
     public function compra(): BelongsTo { return $this->belongsTo(Compra::class); }
-    public function pagos(): HasMany { return $this->hasMany(CuentaPorPagarPago::class); }
+    public function pagos(): HasMany { return $this->hasMany(PagoProveedor::class, 'cuenta_por_pagar_id'); }
 }

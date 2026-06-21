@@ -3,9 +3,10 @@
 namespace App\Services\Sunat;
 
 use App\Models\Cliente;
-use App\Models\ComprobanteElectronico;
+use App\Models\NotaCredito;
+use App\Models\NotaDebito;
 use App\Models\ResumenDiario;
-use App\Models\Venta;
+use App\Models\ResumenDiarioDetalle;
 use Greenter\Model\Company\Address;
 use Greenter\Model\Company\Company;
 use Greenter\Model\Sale\Document;
@@ -16,16 +17,11 @@ class SunatResumenDiarioBuilder
 {
     public function buildFromResumen(ResumenDiario $resumen): Summary
     {
-        $resumen->loadMissing([
-            'empresa.sunatConfiguraciones',
-            'detalles.comprobanteElectronico.venta.cliente',
-            'detalles.comprobanteElectronico.notaElectronica.venta.cliente',
-            'detalles.comprobanteElectronico.notaElectronica.comprobanteReferencia',
-        ]);
+        $resumen->loadMissing(['empresa.sunatConfiguraciones', 'detalles']);
 
         return (new Summary())
             ->setFecGeneracion($resumen->fecha_resumen)
-            ->setFecResumen($resumen->fecha_envio)
+            ->setFecResumen($resumen->fecha_resumen)
             ->setCorrelativo(str_pad((string) $resumen->correlativo, 3, '0', STR_PAD_LEFT))
             ->setMoneda('PEN')
             ->setCompany($this->empresaGreenter($resumen))
@@ -52,18 +48,16 @@ class SunatResumenDiarioBuilder
 
     protected function detallesGreenter(ResumenDiario $resumen): array
     {
-        return $resumen->detalles->values()->map(function ($detalle) {
-            $comprobante = $detalle->comprobanteElectronico;
-            $cliente = $this->clienteDelComprobante($comprobante);
-            $subtotal = max(round((float) $detalle->total - (float) $detalle->total_igv, 2), 0);
+        return $resumen->detalles->values()->map(function (ResumenDiarioDetalle $detalle) {
+            $subtotal = round((float) ($detalle->subtotal ?: ((float) $detalle->total - (float) $detalle->total_igv)), 2);
             $summaryDetail = (new SummaryDetail())
-                ->setTipoDoc($detalle->tipo_documento)
+                ->setTipoDoc($this->tipoDocumentoSunat($detalle->tipo_documento))
                 ->setSerieNro($detalle->serie.'-'.$detalle->correlativo)
-                ->setEstado($detalle->estado_item)
-                ->setClienteTipo($this->tipoDocCliente($cliente))
-                ->setClienteNro($cliente?->numero_documento ?: '00000000')
+                ->setEstado($detalle->estado_item ?: ResumenDiarioDetalle::ADICIONAR)
+                ->setClienteTipo($this->tipoDocCliente($detalle->cliente_tipo_documento))
+                ->setClienteNro($detalle->cliente_numero_documento ?: '00000000')
                 ->setTotal(round((float) $detalle->total, 2))
-                ->setMtoOperGravadas($subtotal)
+                ->setMtoOperGravadas(max($subtotal, 0))
                 ->setMtoOperInafectas(0)
                 ->setMtoOperExoneradas(0)
                 ->setMtoOperExportacion(0)
@@ -75,32 +69,46 @@ class SunatResumenDiarioBuilder
                 ->setMtoOtrosTributos(0)
                 ->setMtoIcbper(0);
 
-            if (in_array($detalle->tipo_documento, ['07', '08'], true)) {
-                $referencia = $comprobante->notaElectronica?->comprobanteReferencia;
+            if (in_array($detalle->tipo_documento, [ResumenDiarioDetalle::NOTA_CREDITO, ResumenDiarioDetalle::NOTA_DEBITO], true)) {
+                $referencia = $this->referenciaBoleta($detalle);
                 $summaryDetail->setDocReferencia((new Document())
                     ->setTipoDoc('03')
-                    ->setNroDoc($referencia?->numero_comprobante));
+                    ->setNroDoc($referencia ?: ''));
             }
 
             return $summaryDetail;
         })->all();
     }
 
-    protected function clienteDelComprobante(ComprobanteElectronico $comprobante): ?Cliente
+    protected function tipoDocumentoSunat(string $tipo): string
     {
-        if ($comprobante->tipo_comprobante === Venta::BOLETA) {
-            return $comprobante->venta?->cliente;
-        }
-
-        return $comprobante->notaElectronica?->venta?->cliente;
+        return match ($tipo) {
+            ResumenDiarioDetalle::BOLETA, '03' => '03',
+            ResumenDiarioDetalle::NOTA_CREDITO, '07' => '07',
+            ResumenDiarioDetalle::NOTA_DEBITO, '08' => '08',
+            default => $tipo,
+        };
     }
 
-    protected function tipoDocCliente(?Cliente $cliente): string
+    protected function referenciaBoleta(ResumenDiarioDetalle $detalle): ?string
     {
-        return match ($cliente?->tipo_documento) {
-            Cliente::RUC => '6',
-            Cliente::DNI => '1',
-            Cliente::CE => '4',
+        if ($detalle->tipo_documento === ResumenDiarioDetalle::NOTA_CREDITO) {
+            return NotaCredito::with('comprobante')->find($detalle->documento_id)?->comprobante?->numero_comprobante;
+        }
+
+        if ($detalle->tipo_documento === ResumenDiarioDetalle::NOTA_DEBITO) {
+            return NotaDebito::with('comprobante')->find($detalle->documento_id)?->comprobante?->numero_comprobante;
+        }
+
+        return null;
+    }
+
+    protected function tipoDocCliente(?string $tipoDocumento): string
+    {
+        return match ($tipoDocumento) {
+            Cliente::RUC, 'RUC' => '6',
+            Cliente::DNI, 'DNI' => '1',
+            Cliente::CE, 'CE' => '4',
             default => '0',
         };
     }

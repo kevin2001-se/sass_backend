@@ -16,8 +16,8 @@ class GenerarComunicacionBajaRequest extends FormRequest
         return [
             'fecha_baja' => ['required', 'date'],
             'comprobantes' => ['required', 'array', 'min:1'],
-            'comprobantes.*.comprobante_electronico_id' => ['required', 'integer', 'exists:comprobantes_electronicos,id', 'distinct'],
-            'comprobantes.*.motivo_baja' => ['required', 'string', 'max:255'],
+            'comprobantes.*' => ['integer', 'distinct', 'exists:comprobantes_electronicos,id'],
+            'observacion' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

@@ -20,6 +20,12 @@ class ComprobanteElectronico extends Model
     public const ERROR = 'ERROR';
     public const DADO_DE_BAJA = 'DADO_DE_BAJA';
 
+    public const BAJA_SIN_BAJA = 'SIN_BAJA';
+    public const BAJA_PENDIENTE = 'PENDIENTE_BAJA';
+    public const BAJA_EN_BAJA = 'EN_BAJA';
+    public const BAJA_ACEPTADA = 'BAJA_ACEPTADA';
+    public const BAJA_RECHAZADA = 'BAJA_RECHAZADA';
+
     protected $fillable = [
         'tenant_id',
         'empresa_id',
@@ -44,6 +50,10 @@ class ComprobanteElectronico extends Model
         'hash',
         'qr_text',
         'estado_sunat',
+        'estado_baja',
+        'motivo_baja',
+        'fecha_solicitud_baja',
+        'solicitado_baja_por',
         'codigo_respuesta',
         'mensaje_respuesta',
         'ticket',
@@ -66,6 +76,7 @@ class ComprobanteElectronico extends Model
             'aceptado_at' => 'datetime',
             'rechazado_at' => 'datetime',
             'dado_baja_at' => 'datetime',
+            'fecha_solicitud_baja' => 'datetime',
             'pdf_generado_at' => 'datetime',
             'ticket_generado_at' => 'datetime',
         ];
@@ -123,6 +134,16 @@ class ComprobanteElectronico extends Model
     public function notasDebito(): HasMany
     {
         return $this->hasMany(NotaDebito::class, 'comprobante_id');
+    }
+
+    public function bajaHistorial(): HasMany
+    {
+        return $this->hasMany(ComprobanteBajaHistorial::class, 'comprobante_id');
+    }
+
+    public function solicitadoBajaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'solicitado_baja_por');
     }
 }
 

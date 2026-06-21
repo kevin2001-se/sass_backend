@@ -23,7 +23,7 @@ class CuentaPorCobrarService
         return DB::transaction(function () use ($venta) {
             if (! $venta->cliente_id) {
                 throw ValidationException::withMessages([
-                    'cliente_id' => ['Una venta crédito debe tener cliente.'],
+                    'cliente_id' => ['Una venta crÃƒÂ©dito debe tener cliente.'],
                 ]);
             }
 
@@ -84,7 +84,7 @@ class CuentaPorCobrarService
 
             if ((float) $data['monto'] > (float) $cuenta->saldo) {
                 throw ValidationException::withMessages([
-                    'monto' => ['No se puede pagar más que el saldo pendiente.'],
+                    'monto' => ['No se puede pagar mÃƒÂ¡s que el saldo pendiente.'],
                 ]);
             }
 
@@ -119,11 +119,69 @@ class CuentaPorCobrarService
             $cuenta->monto_pagado = round((float) $cuenta->monto_pagado + (float) $data['monto'], 2);
             $cuenta->saldo = round((float) $cuenta->monto_total - (float) $cuenta->monto_pagado, 2);
             $this->actualizarEstado($cuenta);
+            $cuenta->venta()->update([
+                'monto_pagado' => $cuenta->monto_pagado,
+                'saldo_pendiente' => $cuenta->saldo,
+            ]);
 
             return $cuenta->refresh()->load(['cliente', 'venta', 'pagos']);
         });
     }
 
+
+    public function anularPago(int $pagoId, array $data): CuentaPorCobrarPago
+    {
+        return DB::transaction(function () use ($pagoId, $data) {
+            $pago = CuentaPorCobrarPago::with(['cuentaPorCobrar.venta'])
+                ->where('tenant_id', $data['tenant_id'])
+                ->where('empresa_id', $data['empresa_id'])
+                ->where('tienda_id', $data['tienda_id'])
+                ->lockForUpdate()
+                ->findOrFail($pagoId);
+
+            if ($pago->estado !== 'REGISTRADO') {
+                throw ValidationException::withMessages([
+                    'pago' => ['Solo se pueden anular pagos registrados.'],
+                ]);
+            }
+
+            $cuenta = CuentaPorCobrar::where('tenant_id', $data['tenant_id'])
+                ->where('empresa_id', $data['empresa_id'])
+                ->where('tienda_id', $data['tienda_id'])
+                ->lockForUpdate()
+                ->findOrFail($pago->cuenta_por_cobrar_id);
+
+            $this->cajaService->registrarEgreso([
+                'tenant_id' => $cuenta->tenant_id,
+                'empresa_id' => $cuenta->empresa_id,
+                'tienda_id' => $cuenta->tienda_id,
+                'user_id' => $data['user_id'],
+                'metodo_pago' => $pago->metodo_pago,
+                'concepto' => 'Anulacion de pago de cliente venta '.$cuenta->venta?->numero_comprobante,
+                'monto' => $pago->monto,
+                'referencia_tipo' => 'CUENTA_POR_COBRAR',
+                'referencia_id' => $cuenta->id,
+                'observacion' => $data['motivo'] ?? null,
+            ]);
+
+            $pago->update([
+                'estado' => 'ANULADO',
+                'anulado_by' => $data['user_id'],
+                'anulado_at' => now(),
+                'observacion' => trim(($pago->observacion ? $pago->observacion.' | ' : '').'ANULADO: '.($data['motivo'] ?? '')),
+            ]);
+
+            $cuenta->monto_pagado = round(max(0, (float) $cuenta->monto_pagado - (float) $pago->monto), 2);
+            $cuenta->saldo = round((float) $cuenta->monto_total - (float) $cuenta->monto_pagado, 2);
+            $this->actualizarEstado($cuenta);
+            $cuenta->venta()->update([
+                'monto_pagado' => $cuenta->monto_pagado,
+                'saldo_pendiente' => $cuenta->saldo,
+            ]);
+
+            return $pago->refresh();
+        });
+    }
     public function actualizarEstado(CuentaPorCobrar $cuenta): void
     {
         if ((float) $cuenta->saldo <= 0) {
@@ -166,7 +224,7 @@ class CuentaPorCobrarService
                     'tienda_id' => $cuenta->tienda_id,
                     'user_id' => $pago->user_id,
                     'metodo_pago' => $pago->metodo_pago,
-                    'concepto' => 'Anulación de cobro venta '.$cuenta->venta->numero_comprobante,
+                    'concepto' => 'AnulaciÃƒÂ³n de cobro venta '.$cuenta->venta->numero_comprobante,
                     'monto' => $pago->monto,
                     'referencia_tipo' => 'CUENTA_POR_COBRAR',
                     'referencia_id' => $cuenta->id,

@@ -11,6 +11,11 @@ class CuentaPorCobrarPagoResource extends JsonResource
         return [
             'id' => $this->id,
             'cuenta_por_cobrar_id' => $this->cuenta_por_cobrar_id,
+            'cuenta_por_cobrar' => new CuentaPorCobrarResource($this->whenLoaded('cuentaPorCobrar')),
+            'cliente_id' => $this->cuentaPorCobrar?->cliente_id,
+            'cliente' => new ClienteResource($this->whenLoaded('cuentaPorCobrar.cliente')),
+            'venta_id' => $this->cuentaPorCobrar?->venta_id,
+            'venta' => new VentaResource($this->whenLoaded('cuentaPorCobrar.venta')),
             'caja_id' => $this->caja_id,
             'user_id' => $this->user_id,
             'metodo_pago' => $this->metodo_pago,
@@ -19,6 +24,8 @@ class CuentaPorCobrarPagoResource extends JsonResource
             'referencia' => $this->referencia,
             'observacion' => $this->observacion,
             'estado' => $this->estado,
+            'anulado_by' => $this->anulado_by,
+            'anulado_at' => $this->anulado_at?->toDateTimeString(),
         ];
     }
 }

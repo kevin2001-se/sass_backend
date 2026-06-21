@@ -17,11 +17,13 @@ class ComunicacionBajaDetalle extends Model
         'empresa_id',
         'tienda_id',
         'comunicacion_baja_id',
+        'comprobante_id',
         'comprobante_electronico_id',
         'tipo_documento',
         'serie',
         'correlativo',
         'numero_comprobante',
+        'numero_completo',
         'motivo_baja',
     ];
 
@@ -29,12 +31,15 @@ class ComunicacionBajaDetalle extends Model
     {
         return [
             'correlativo' => 'integer',
+            'comprobante_id' => 'integer',
+            'comprobante_electronico_id' => 'integer',
         ];
     }
 
     public function comunicacionBaja(): BelongsTo { return $this->belongsTo(ComunicacionBaja::class); }
-    public function comprobanteElectronico(): BelongsTo { return $this->belongsTo(ComprobanteElectronico::class); }
+    public function comprobante(): BelongsTo { return $this->belongsTo(ComprobanteElectronico::class, 'comprobante_id'); }
+    public function comprobanteElectronico(): BelongsTo { return $this->belongsTo(ComprobanteElectronico::class, 'comprobante_electronico_id'); }
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
     public function empresa(): BelongsTo { return $this->belongsTo(Empresa::class); }
-    public function tienda(): BelongsTo { return $this->belongsTo(Tienda::class); }
 }
+

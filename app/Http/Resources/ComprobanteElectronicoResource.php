@@ -2,6 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Models\NotaCredito;
+use App\Models\NotaDebito;
+use App\Models\Venta;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class ComprobanteElectronicoResource extends JsonResource
@@ -59,6 +62,15 @@ class ComprobanteElectronicoResource extends JsonResource
                 ] : null,
             ] : null,
             'estado_sunat' => $this->estado_sunat,
+            'estado_baja' => $this->estado_baja ?: 'SIN_BAJA',
+            'motivo_baja' => $this->motivo_baja,
+            'mecanismo_baja' => $this->mecanismoBaja(),
+            'fecha_solicitud_baja' => $this->fecha_solicitud_baja?->toDateTimeString(),
+            'solicitado_baja_por' => $this->whenLoaded('solicitadoBajaPor', fn () => $this->solicitadoBajaPor ? [
+                'id' => $this->solicitadoBajaPor->id,
+                'name' => $this->solicitadoBajaPor->name,
+            ] : null),
+            'baja_historial' => $this->whenLoaded('bajaHistorial', fn () => ComprobanteBajaHistorialResource::collection($this->bajaHistorial)),
             'codigo_respuesta' => $this->codigo_respuesta,
             'mensaje_respuesta' => $this->mensaje_respuesta,
             'hash' => $this->hash,
@@ -77,5 +89,41 @@ class ComprobanteElectronicoResource extends JsonResource
             'ticket_generado_at' => $this->ticket_generado_at?->toDateTimeString(),
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
+    }
+    protected function mecanismoBaja(): ?string
+    {
+        return match ($this->tipo_comprobante) {
+            Venta::BOLETA => 'RESUMEN_DIARIO',
+            Venta::FACTURA => 'COMUNICACION_BAJA',
+            'NOTA_CREDITO' => $this->notaCreditoOrigenBoleta() ? 'RESUMEN_DIARIO' : 'COMUNICACION_BAJA',
+            'NOTA_DEBITO' => $this->notaDebitoOrigenBoleta() ? 'RESUMEN_DIARIO' : 'COMUNICACION_BAJA',
+            default => null,
+        };
+    }
+
+    protected function notaCreditoOrigenBoleta(): bool
+    {
+        $nota = NotaCredito::with('comprobante')
+            ->where(function ($query) {
+                $query->where('id', $this->documento_origen_id)
+                    ->orWhere('id', $this->nota_electronica_id)
+                    ->orWhere('numero_completo', $this->numero_comprobante);
+            })
+            ->first();
+
+        return $nota?->comprobante?->tipo_comprobante === Venta::BOLETA;
+    }
+
+    protected function notaDebitoOrigenBoleta(): bool
+    {
+        $nota = NotaDebito::with('comprobante')
+            ->where(function ($query) {
+                $query->where('id', $this->documento_origen_id)
+                    ->orWhere('id', $this->nota_electronica_id)
+                    ->orWhere('numero_completo', $this->numero_comprobante);
+            })
+            ->first();
+
+        return $nota?->comprobante?->tipo_comprobante === Venta::BOLETA;
     }
 }

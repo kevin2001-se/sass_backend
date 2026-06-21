@@ -12,6 +12,7 @@ class PosProductoService
     {
         $query = trim((string) $query);
         $today = Carbon::today();
+        $metodoSalida = strtoupper((string) parametro('metodo_salida', 'FEFO'));
 
         $productos = Producto::query()
             ->with([
@@ -39,8 +40,8 @@ class PosProductoService
                         ->where('estado', true)
                         ->where('cantidad_actual', '>', 0),
                     ])
-                    ->orderBy('fecha_vencimiento')
-                    ->orderBy('codigo_lote'),
+                    ->when($metodoSalida === 'FIFO', fn ($q) => $q->orderBy('created_at')->orderBy('id'))
+                    ->when($metodoSalida !== 'FIFO', fn ($q) => $q->orderBy('fecha_vencimiento')->orderBy('codigo_lote')),
             ])
             ->where('tenant_id', $context['tenant_id'])
             ->where('empresa_id', $context['empresa_id'])
@@ -67,7 +68,7 @@ class PosProductoService
             ->get();
 
         return $productos
-            ->map(function (Producto $producto) use ($query, $today) {
+            ->map(function (Producto $producto) use ($query, $today, $metodoSalida) {
                 $validStocks = $producto->stocks->filter(function ($stock) use ($producto, $today) {
                     if (! $producto->maneja_lote) {
                         return $stock->lote_id === null;
@@ -95,6 +96,7 @@ class PosProductoService
                         })
                         ->filter(fn ($lote) => $lote->stock && (float) $lote->stock->cantidad_actual > 0)
                         ->filter(fn ($lote) => ! $producto->maneja_vencimiento || ! $lote->fecha_vencimiento || $lote->fecha_vencimiento->gte($today))
+                        ->sortBy(fn ($lote) => $metodoSalida === 'FIFO' ? ($lote->created_at?->toDateTimeString() ?? '9999-12-31 23:59:59') : ($lote->fecha_vencimiento?->toDateString() ?? '9999-12-31'))
                         ->values()
                     : collect();
 

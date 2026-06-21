@@ -15,6 +15,7 @@ class GenerarResumenDiarioRequest extends FormRequest
     {
         return [
             'fecha_resumen' => ['required', 'date'],
+            'observacion' => ['nullable', 'string', 'max:500'],
             'incluir_boletas' => ['sometimes', 'boolean'],
             'incluir_notas_credito' => ['sometimes', 'boolean'],
             'incluir_notas_debito' => ['sometimes', 'boolean'],

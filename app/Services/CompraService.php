@@ -10,13 +10,14 @@ use App\Models\ProductoPresentacion;
 use App\Models\Proveedor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class CompraService
 {
     private const IGV = 0.18;
 
-    public function __construct(private readonly InventarioService $inventarioService) {}
+    public function __construct(private readonly InventarioService $inventarioService, private readonly CuentaPorPagarService $cuentaPorPagarService) {}
 
     public function listar(Request $request)
     {
@@ -72,7 +73,7 @@ class CompraService
                 'serie' => strtoupper($data['serie']),
                 'numero' => (string) $data['numero'],
                 'tipo_compra' => $data['tipo_compra'],
-                'moneda' => $data['moneda'] ?? 'PEN',
+                'moneda' => $data['moneda'] ?? parametro('moneda_default', 'PEN'),
                 'fecha_emision' => $data['fecha_emision'],
                 'fecha_vencimiento' => $data['fecha_vencimiento'] ?? null,
                 'subtotal' => $totales['subtotal'],
@@ -86,6 +87,16 @@ class CompraService
             foreach ($detalles as $detalle) {
                 $compra->detalles()->create($detalle);
                 $this->registrarEntradaInventario($compra, $detalle, $data);
+            }
+
+            if ($compra->tipo_compra === Compra::CREDITO && (bool) parametro('crear_cxp_automaticamente', true)) {
+                $this->cuentaPorPagarService->crearDesdeCompra($compra);
+            } elseif ($compra->tipo_compra === Compra::CREDITO) {
+                Log::info('Parametro crear_cxp_automaticamente desactivado: compra credito sin CxP automatica.', [
+                    'compra_id' => $compra->id,
+                    'empresa_id' => $compra->empresa_id,
+                    'tienda_id' => $compra->tienda_id,
+                ]);
             }
 
             return $this->cargarCompra($compra->refresh());
@@ -104,6 +115,8 @@ class CompraService
             if ($compra->estado !== Compra::REGISTRADA) {
                 throw ValidationException::withMessages(['compra' => ['Solo se puede anular una compra registrada.']]);
             }
+
+            $this->cuentaPorPagarService->anularPorCompraSiSinPagos($compra);
 
             foreach ($compra->detalles as $detalle) {
                 $this->inventarioService->disminuirStock([
@@ -276,6 +289,7 @@ class CompraService
             'movimientosInventario.presentacion.unidadMedida',
             'movimientosInventario.lote',
             'movimientosInventario.user',
+            'cuentaPorPagar.proveedor',
         ]);
     }
 }

@@ -41,6 +41,8 @@ class Compra extends Model
         'observacion',
         'motivo_anulacion',
         'anulado_at',
+        'pdf_path',
+        'pdf_generado_at',
     ];
 
     protected function casts(): array

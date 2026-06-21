@@ -8,11 +8,17 @@ use App\Http\Controllers\Api\CajaMovimientoController;
 use App\Http\Controllers\Api\CategoriaController;
 use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\ComprobanteElectronicoController;
+use App\Http\Controllers\Api\ComprobanteBajaController;
 use App\Http\Controllers\Api\ComunicacionBajaController;
+use App\Http\Controllers\Api\ComunicacionBajaDocumentoController;
+use App\Http\Controllers\Api\ComunicacionBajaSunatController;
 use App\Http\Controllers\Api\CompraController;
 use App\Http\Controllers\Api\CompraDocumentoController;
 use App\Http\Controllers\Api\ConfiguracionEmpresaController;
 use App\Http\Controllers\Api\PermisoController;
+use App\Http\Controllers\Api\PagoProveedorController;
+use App\Http\Controllers\Api\PagoClienteController;
+use App\Http\Controllers\Api\ParametroController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TiendaController;
 use App\Http\Controllers\Api\UsuarioController;use App\Http\Controllers\Api\CuentaPorPagarController;
@@ -47,9 +53,12 @@ use App\Http\Controllers\Api\ProveedorController;
 use App\Http\Controllers\Api\ReporteCajaController;
 use App\Http\Controllers\Api\ReporteComprasController;
 use App\Http\Controllers\Api\ReporteFinancieroController;
+use App\Http\Controllers\Api\ReporteExportController;
 use App\Http\Controllers\Api\ReporteInventarioController;
 use App\Http\Controllers\Api\ReporteVentasController;
 use App\Http\Controllers\Api\ResumenDiarioController;
+use App\Http\Controllers\Api\ResumenDiarioDocumentoController;
+use App\Http\Controllers\Api\ResumenDiarioSunatController;
 use App\Http\Controllers\Api\SerieComprobanteController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\SunatConfiguracionController;
@@ -72,6 +81,9 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::put('configuracion/empresa', [ConfiguracionEmpresaController::class, 'update'])->middleware('permission:configuracion.empresa.editar');
     Route::post('configuracion/empresa', [ConfiguracionEmpresaController::class, 'update'])->middleware('permission:configuracion.empresa.editar');
     Route::get('configuracion/empresa/logo', [ConfiguracionEmpresaController::class, 'logo'])->middleware('permission:configuracion.empresa.ver');
+    Route::get('parametros', [ParametroController::class, 'index'])->middleware('permission:parametros.ver');
+    Route::get('parametros/grupo/{grupo}', [ParametroController::class, 'grupo'])->middleware('permission:parametros.ver');
+    Route::put('parametros', [ParametroController::class, 'update'])->middleware('permission:parametros.editar');
 
     Route::get('tiendas', [TiendaController::class, 'index'])->middleware('permission:tiendas.ver');
     Route::post('tiendas', [TiendaController::class, 'store'])->middleware('permission:tiendas.crear');
@@ -154,6 +166,8 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
 
     Route::get('lotes', [LoteController::class, 'index'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
     Route::post('lotes', [LoteController::class, 'store'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
+    Route::get('lotes/carga-masiva/plantilla', [LoteController::class, 'plantillaCargaMasiva'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
+    Route::post('lotes/carga-masiva', [LoteController::class, 'cargaMasiva'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
     Route::get('lotes/{lote}', [LoteController::class, 'show'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
     Route::put('lotes/{lote}', [LoteController::class, 'update'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
     Route::patch('lotes/{lote}', [LoteController::class, 'update'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
@@ -167,6 +181,8 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::post('inventario/entrada', [InventarioMovimientoController::class, 'entrada'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
     Route::post('inventario/salida', [InventarioMovimientoController::class, 'salida'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
     Route::post('inventario/ajuste', [InventarioMovimientoController::class, 'ajuste'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
+    Route::get('inventario/{tipo}/carga-masiva/plantilla', [InventarioMovimientoController::class, 'plantillaCargaMasiva'])->whereIn('tipo', ['entrada', 'salida', 'ajuste'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
+    Route::post('inventario/{tipo}/carga-masiva', [InventarioMovimientoController::class, 'cargaMasiva'])->whereIn('tipo', ['entrada', 'salida', 'ajuste'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
     Route::get('inventario/kardex/{productoId}', [InventarioMovimientoController::class, 'kardex'])->middleware(['resolve.tienda', 'permission:inventario.ver']);
 
     Route::get('clientes', [ClienteController::class, 'index'])->middleware('permission:ventas.ver');
@@ -277,15 +293,22 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::post('compras/{compra}/generar-pdf', [CompraDocumentoController::class, 'generarPdf'])->middleware(['resolve.tienda', 'permission:compras.pdf.ver']);
     Route::get('compras/{compra}/pdf', [CompraDocumentoController::class, 'pdf'])->middleware(['resolve.tienda', 'permission:compras.pdf.ver']);
 
-    Route::get('cuentas-por-pagar', [CuentaPorPagarController::class, 'index'])->middleware(['resolve.tienda', 'permission:compras.ver']);
-    Route::get('cuentas-por-pagar/{cuenta}', [CuentaPorPagarController::class, 'show'])->middleware(['resolve.tienda', 'permission:compras.ver']);
-    Route::post('cuentas-por-pagar/{cuenta}/pagar', [CuentaPorPagarController::class, 'pagar'])->middleware(['resolve.tienda', 'permission:compras.crear']);
+    Route::get('cuentas-por-pagar', [CuentaPorPagarController::class, 'index'])->middleware(['resolve.tienda', 'permission:cuentas_pagar.ver']);
+    Route::get('cuentas-por-pagar/{cuenta}', [CuentaPorPagarController::class, 'show'])->middleware(['resolve.tienda', 'permission:cuentas_pagar.ver']);
+    Route::get('pagos-proveedor', [PagoProveedorController::class, 'index'])->middleware(['resolve.tienda', 'permission:pagos_proveedor.ver']);
+    Route::post('pagos-proveedor', [PagoProveedorController::class, 'store'])->middleware(['resolve.tienda', 'permission:pagos_proveedor.crear']);
+    Route::get('pagos-proveedor/{pago}', [PagoProveedorController::class, 'show'])->middleware(['resolve.tienda', 'permission:pagos_proveedor.ver']);
+    Route::post('pagos-proveedor/{pago}/anular', [PagoProveedorController::class, 'anular'])->middleware(['resolve.tienda', 'permission:pagos_proveedor.anular']);
 
     Route::get('cuentas-por-cobrar', [CuentaPorCobrarController::class, 'index'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
     Route::get('cuentas-por-cobrar/vencidas', [CuentaPorCobrarController::class, 'vencidas'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
     Route::get('cuentas-por-cobrar/cliente/{clienteId}', [CuentaPorCobrarController::class, 'cliente'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
     Route::get('cuentas-por-cobrar/{cuenta}', [CuentaPorCobrarController::class, 'show'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
     Route::post('cuentas-por-cobrar/{cuenta}/pagar', [CuentaPorCobrarController::class, 'pagar'])->middleware(['resolve.tienda', 'permission:ventas.crear']);
+    Route::get('pagos-cliente', [PagoClienteController::class, 'index'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
+    Route::post('pagos-cliente', [PagoClienteController::class, 'store'])->middleware(['resolve.tienda', 'permission:ventas.crear']);
+    Route::get('pagos-cliente/{id}', [PagoClienteController::class, 'show'])->middleware(['resolve.tienda', 'permission:ventas.ver']);
+    Route::post('pagos-cliente/{id}/anular', [PagoClienteController::class, 'anular'])->middleware(['resolve.tienda', 'permission:ventas.crear']);
 
     Route::get('reportes/ventas/resumen', [ReporteVentasController::class, 'resumen'])->middleware(['resolve.tienda', 'permission:reportes.ver']);
     Route::get('reportes/ventas/metodos-pago', [ReporteVentasController::class, 'metodosPago'])->middleware(['resolve.tienda', 'permission:reportes.ver']);
@@ -311,6 +334,8 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::get('reportes/financiero/cuentas-por-pagar', [ReporteFinancieroController::class, 'cuentasPorPagar'])->middleware(['resolve.tienda', 'permission:reportes.ver']);
     Route::get('reportes/financiero/flujo', [ReporteFinancieroController::class, 'flujo'])->middleware(['resolve.tienda', 'permission:reportes.ver']);
 
+    Route::get('reportes/{grupo}/{reporte}/excel', [ReporteExportController::class, 'excel'])->middleware(['resolve.tienda', 'permission:reportes.ver']);
+    Route::get('reportes/{grupo}/{reporte}/pdf', [ReporteExportController::class, 'pdf'])->middleware(['resolve.tienda', 'permission:reportes.ver']);
     Route::get('sunat/configuracion', [SunatConfiguracionController::class, 'show'])->middleware('permission:sunat.configuracion.ver');
     Route::post('sunat/configuracion', [SunatConfiguracionController::class, 'store'])->middleware('permission:sunat.configuracion.crear');
     Route::post('sunat/configuracion/probar-gre', [SunatConfiguracionController::class, 'probarGre'])->middleware('permission:sunat.configuracion.ver');
@@ -324,6 +349,10 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::get('sunat/comprobantes/{comprobante}', [ComprobanteElectronicoController::class, 'show'])->middleware('resolve.tienda');
     Route::get('sunat/comprobantes/{comprobante}/xml', [ComprobanteElectronicoController::class, 'xml'])->middleware('resolve.tienda');
     Route::get('sunat/comprobantes/{comprobante}/cdr', [ComprobanteElectronicoController::class, 'cdr'])->middleware('resolve.tienda');
+    Route::post('sunat/comprobantes/{id}/solicitar-baja', [ComprobanteBajaController::class, 'solicitar'])->middleware(['resolve.tienda', 'permission:comprobantes.solicitar_baja']);
+    Route::get('sunat/comprobantes/{id}/historial-baja', [ComprobanteBajaController::class, 'historial'])->middleware(['resolve.tienda', 'permission:comprobantes.ver_bajas']);
+    Route::post('comprobantes/{id}/solicitar-baja', [ComprobanteBajaController::class, 'solicitar'])->middleware(['resolve.tienda', 'permission:comprobantes.solicitar_baja']);
+    Route::get('comprobantes/{id}/historial-baja', [ComprobanteBajaController::class, 'historial'])->middleware(['resolve.tienda', 'permission:comprobantes.ver_bajas']);
 
     Route::get('sunat/notas', [NotaElectronicaController::class, 'index'])->middleware('resolve.tienda');
     Route::post('sunat/notas/credito', [NotaElectronicaController::class, 'credito'])->middleware('resolve.tienda');
@@ -332,6 +361,18 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::post('sunat/notas/{nota}/anular', [NotaElectronicaController::class, 'anular'])->middleware('resolve.tienda');
     Route::post('sunat/notas/{nota}/reenviar', [NotaElectronicaController::class, 'reenviar'])->middleware('resolve.tienda');
 
+    Route::get('resumenes-diarios', [ResumenDiarioController::class, 'index'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.ver']);
+    Route::post('resumenes-diarios/generar', [ResumenDiarioController::class, 'generar'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.generar']);
+    Route::get('resumenes-diarios/documentos-disponibles', [ResumenDiarioController::class, 'documentosDisponibles'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.ver']);
+    Route::get('resumenes-diarios/{id}', [ResumenDiarioController::class, 'show'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.ver']);
+    Route::post('resumenes-diarios/{id}/anular', [ResumenDiarioController::class, 'anular'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.anular']);
+    Route::post('resumenes-diarios/{id}/enviar-sunat', [ResumenDiarioSunatController::class, 'enviar'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.enviar_sunat']);
+    Route::post('resumenes-diarios/{id}/reenviar-sunat', [ResumenDiarioSunatController::class, 'reenviar'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.reenviar_sunat']);
+    Route::post('resumenes-diarios/{id}/consultar-ticket', [ResumenDiarioSunatController::class, 'consultarTicket'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.consultar_ticket']);
+    Route::post('resumenes-diarios/{id}/generar-pdf-a4', [ResumenDiarioDocumentoController::class, 'generarPdfA4'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.pdf.generar']);
+    Route::get('resumenes-diarios/{id}/pdf-a4', [ResumenDiarioDocumentoController::class, 'pdfA4'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.pdf.descargar']);
+    Route::get('resumenes-diarios/{id}/xml', [ResumenDiarioDocumentoController::class, 'xml'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.xml.descargar']);
+    Route::get('resumenes-diarios/{id}/cdr', [ResumenDiarioDocumentoController::class, 'cdr'])->middleware(['resolve.tienda', 'permission:resumenes_diarios.cdr.descargar']);
     Route::get('sunat/resumenes-diarios', [ResumenDiarioController::class, 'index'])->middleware('resolve.tienda');
     Route::post('sunat/resumenes-diarios/generar', [ResumenDiarioController::class, 'generar'])->middleware('resolve.tienda');
     Route::post('sunat/resumenes-diarios/{id}/enviar', [ResumenDiarioController::class, 'enviar'])->middleware('resolve.tienda');
@@ -341,15 +382,31 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::get('sunat/resumenes-diarios/{id}/xml', [ResumenDiarioController::class, 'xml'])->middleware('resolve.tienda');
     Route::get('sunat/resumenes-diarios/{id}/cdr', [ResumenDiarioController::class, 'cdr'])->middleware('resolve.tienda');
 
-    Route::get('sunat/comunicaciones-baja', [ComunicacionBajaController::class, 'index'])->middleware('resolve.tienda');
-    Route::post('sunat/comunicaciones-baja/generar', [ComunicacionBajaController::class, 'generar'])->middleware('resolve.tienda');
-    Route::post('sunat/comunicaciones-baja/{id}/enviar', [ComunicacionBajaController::class, 'enviar'])->middleware('resolve.tienda');
-    Route::post('sunat/comunicaciones-baja/{id}/consultar-ticket', [ComunicacionBajaController::class, 'consultarTicket'])->middleware('resolve.tienda');
-    Route::post('sunat/comunicaciones-baja/{id}/reenviar', [ComunicacionBajaController::class, 'reenviar'])->middleware('resolve.tienda');
-    Route::get('sunat/comunicaciones-baja/{id}', [ComunicacionBajaController::class, 'show'])->middleware('resolve.tienda');
-    Route::get('sunat/comunicaciones-baja/{id}/xml', [ComunicacionBajaController::class, 'xml'])->middleware('resolve.tienda');
-    Route::get('sunat/comunicaciones-baja/{id}/cdr', [ComunicacionBajaController::class, 'cdr'])->middleware('resolve.tienda');
 
+    Route::get('comunicaciones-baja', [ComunicacionBajaController::class, 'index'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.ver']);
+    Route::get('comunicaciones-baja/documentos-pendientes', [ComunicacionBajaController::class, 'documentosPendientes'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.ver']);
+    Route::post('comunicaciones-baja/generar', [ComunicacionBajaController::class, 'generar'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.generar']);
+    Route::get('comunicaciones-baja/{id}', [ComunicacionBajaController::class, 'show'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.ver']);
+    Route::post('comunicaciones-baja/{id}/anular', [ComunicacionBajaController::class, 'anular'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.anular']);
+    Route::post('comunicaciones-baja/{id}/enviar-sunat', [ComunicacionBajaSunatController::class, 'enviar'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.enviar_sunat']);
+    Route::post('comunicaciones-baja/{id}/reenviar-sunat', [ComunicacionBajaSunatController::class, 'reenviar'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.reenviar_sunat']);
+    Route::post('comunicaciones-baja/{id}/generar-pdf-a4', [ComunicacionBajaDocumentoController::class, 'generarPdfA4'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.pdf.generar']);
+    Route::get('comunicaciones-baja/{id}/pdf-a4', [ComunicacionBajaDocumentoController::class, 'pdfA4'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.pdf.descargar']);
+    Route::get('comunicaciones-baja/{id}/xml', [ComunicacionBajaDocumentoController::class, 'xml'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.xml.descargar']);
+    Route::post('comunicaciones-baja/{id}/consultar-ticket', [ComunicacionBajaSunatController::class, 'consultarTicket'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.consultar_ticket']);
+    Route::get('comunicaciones-baja/{id}/cdr', [ComunicacionBajaDocumentoController::class, 'cdr'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.cdr.descargar']);
+    Route::get('sunat/comunicaciones-baja', [ComunicacionBajaController::class, 'index'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.ver']);
+    Route::get('sunat/comunicaciones-baja/documentos-pendientes', [ComunicacionBajaController::class, 'documentosPendientes'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.ver']);
+    Route::post('sunat/comunicaciones-baja/generar', [ComunicacionBajaController::class, 'generar'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.generar']);
+    Route::get('sunat/comunicaciones-baja/{id}', [ComunicacionBajaController::class, 'show'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.ver']);
+    Route::post('sunat/comunicaciones-baja/{id}/anular', [ComunicacionBajaController::class, 'anular'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.anular']);
+    Route::post('sunat/comunicaciones-baja/{id}/enviar-sunat', [ComunicacionBajaSunatController::class, 'enviar'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.enviar_sunat']);
+    Route::post('sunat/comunicaciones-baja/{id}/reenviar-sunat', [ComunicacionBajaSunatController::class, 'reenviar'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.reenviar_sunat']);
+    Route::post('sunat/comunicaciones-baja/{id}/generar-pdf-a4', [ComunicacionBajaDocumentoController::class, 'generarPdfA4'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.pdf.generar']);
+    Route::get('sunat/comunicaciones-baja/{id}/pdf-a4', [ComunicacionBajaDocumentoController::class, 'pdfA4'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.pdf.descargar']);
+    Route::get('sunat/comunicaciones-baja/{id}/xml', [ComunicacionBajaDocumentoController::class, 'xml'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.xml.descargar']);
+    Route::post('sunat/comunicaciones-baja/{id}/consultar-ticket', [ComunicacionBajaSunatController::class, 'consultarTicket'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.consultar_ticket']);
+    Route::get('sunat/comunicaciones-baja/{id}/cdr', [ComunicacionBajaDocumentoController::class, 'cdr'])->middleware(['resolve.tienda', 'permission:comunicaciones_baja.cdr.descargar']);
     Route::get('sunat/guias-remision', [GuiaRemisionController::class, 'index'])->middleware('resolve.tienda');
     Route::post('sunat/guias-remision', [GuiaRemisionController::class, 'store'])->middleware('resolve.tienda');
     Route::post('sunat/guias-remision/desde-venta/{ventaId}', [GuiaRemisionController::class, 'desdeVenta'])->middleware('resolve.tienda');
@@ -373,6 +430,8 @@ Route::middleware(['auth:sanctum', 'resolve.tenant'])->group(function () {
     Route::get('sunat/documentos/{id}/xml', [DocumentoElectronicoController::class, 'xml'])->middleware('resolve.tienda');
     Route::get('sunat/documentos/{id}/cdr', [DocumentoElectronicoController::class, 'cdr'])->middleware('resolve.tienda');
 });
+
+
 
 
 

@@ -23,14 +23,26 @@ class ComprobanteElectronicoService
 
     public function emitirDesdeVenta(int $ventaId, ?array $scope = null): ComprobanteElectronico
     {
-        $comprobante = DB::transaction(function () use ($ventaId, $scope) {
+        $comprobante = $this->registrarPendienteDesdeVenta($ventaId, $scope);
+
+        if ($comprobante->estado_sunat === ComprobanteElectronico::ACEPTADO) {
+            throw ValidationException::withMessages([
+                'venta_id' => ['La venta ya tiene un comprobante aceptado.'],
+            ]);
+        }
+
+        return $this->enviarSunat($comprobante->refresh());
+    }
+
+    public function registrarPendienteDesdeVenta(int $ventaId, ?array $scope = null): ComprobanteElectronico
+    {
+        return DB::transaction(function () use ($ventaId, $scope) {
             $venta = $this->ventaQuery($scope)->lockForUpdate()->findOrFail($ventaId);
             $this->validarVentaParaEmision($venta);
 
-            if ($this->comprobanteQuery($scope)->where('venta_id', $venta->id)->exists()) {
-                throw ValidationException::withMessages([
-                    'venta_id' => ['La venta ya tiene un comprobante electrÃ³nico registrado.'],
-                ]);
+            $existente = $this->comprobanteQuery($scope)->where('venta_id', $venta->id)->lockForUpdate()->first();
+            if ($existente) {
+                return $existente;
             }
 
             $this->configuracionActiva($venta);
@@ -45,12 +57,10 @@ class ComprobanteElectronicoService
                 'correlativo' => $venta->correlativo,
                 'numero_comprobante' => $venta->numero_comprobante,
                 'fecha_emision' => $venta->fecha_emision,
-                'moneda' => 'PEN',
+                'moneda' => parametro('moneda_default', 'PEN'),
                 'estado_sunat' => ComprobanteElectronico::PENDIENTE,
             ]);
         });
-
-        return $this->enviarSunat($comprobante->refresh());
     }
 
     public function reenviar(int $comprobanteId, ?array $scope = null): ComprobanteElectronico
@@ -110,7 +120,7 @@ class ComprobanteElectronicoService
             $response = $see->sendXml($invoice::class, $invoice->getName(), $xml);
 
             if (! $response) {
-                throw new RuntimeException('SUNAT no devolviÃ³ respuesta para el comprobante.');
+                throw new RuntimeException('SUNAT no devolvio respuesta para el comprobante.');
             }
 
             return $this->actualizarEstadoSunat($comprobante->refresh(), $response);
@@ -209,7 +219,7 @@ class ComprobanteElectronicoService
             ->first();
 
         if (! $configuracion) {
-            throw ValidationException::withMessages(['sunat_configuracion' => ['No existe configuraciÃ³n SUNAT activa para esta empresa.']]);
+            throw ValidationException::withMessages(['sunat_configuracion' => ['No existe configuracion SUNAT activa para esta empresa.']]);
         }
 
         return $configuracion;

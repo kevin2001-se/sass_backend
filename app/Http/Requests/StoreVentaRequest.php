@@ -25,7 +25,7 @@ class StoreVentaRequest extends FormRequest
             'detalles.*.cantidad_presentacion' => ['required', 'numeric', 'min:0.01'],
             'detalles.*.descuento' => ['sometimes', 'numeric', 'min:0'],
             'pagos' => ['sometimes', 'array'],
-            'pagos.*.metodo_pago' => ['required_with:pagos', 'in:EFECTIVO,YAPE,PLIN,TARJETA,TRANSFERENCIA,CREDITO'],
+            'pagos.*.metodo_pago' => ['required_with:pagos', 'in:EFECTIVO,YAPE,PLIN,TARJETA,TRANSFERENCIA'],
             'pagos.*.monto' => ['required_with:pagos', 'numeric', 'min:0.01'],
             'pagos.*.referencia' => ['nullable', 'string', 'max:255'],
             'observacion' => ['nullable', 'string'],
