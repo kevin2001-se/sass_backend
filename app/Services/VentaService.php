@@ -31,7 +31,7 @@ class VentaService
     public function registrarVenta(array $data): Venta
     {
         $venta = DB::transaction(function () use ($data) {
-            $permitirVentaSinStock = (bool) parametro('permitir_venta_sin_stock', false);
+            $permitirVentaSinStock = (bool) \parametro('permitir_venta_sin_stock', false);
             $detallesCalculados = $this->calcularDetalles($data);
 
             if ($permitirVentaSinStock) {
@@ -237,7 +237,7 @@ class VentaService
             }
 
             $total = round($importeBruto - $descuento, 2);
-            $aplicaIgvNotaVenta = (bool) parametro('aplicar_igv_en_nota_venta', false);
+            $aplicaIgvNotaVenta = (bool) \parametro('aplicar_igv_en_nota_venta', false);
             $aplicaIgv = ($data['tipo_comprobante'] !== Venta::NOTA_VENTA || $aplicaIgvNotaVenta) && (bool) $producto->afecto_igv;
             $subtotal = $aplicaIgv ? round($total / (1 + self::IGV), 2) : $total;
             $igv = $aplicaIgv ? round($total - $subtotal, 2) : 0;
@@ -372,7 +372,7 @@ class VentaService
         $claveParametro = $venta->tipo_comprobante === Venta::BOLETA
             ? 'enviar_boleta_automaticamente'
             : 'enviar_factura_automaticamente';
-        $enviarAutomaticamente = (bool) parametro($claveParametro, false);
+        $enviarAutomaticamente = (bool) \parametro($claveParametro, false);
 
         try {
             if (! $enviarAutomaticamente) {

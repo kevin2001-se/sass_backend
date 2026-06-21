@@ -339,7 +339,7 @@ class ResumenDiarioService
                 'correlativo' => $venta->correlativo,
                 'numero_comprobante' => $venta->numero_comprobante,
                 'fecha_emision' => $venta->fecha_emision,
-                'moneda' => parametro('moneda_default', 'PEN'),
+                'moneda' => \parametro('moneda_default', 'PEN'),
                 'estado_sunat' => ComprobanteElectronico::PENDIENTE,
             ]
         )->load('venta.cliente');

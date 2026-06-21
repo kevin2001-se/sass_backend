@@ -39,7 +39,7 @@ class ReporteInventarioService
 
     public function lotesPorVencer(array $filtros)
     {
-        $dias = (int) parametro('dias_alerta_vencimiento', 30);
+        $dias = (int) \parametro('dias_alerta_vencimiento', 30);
         return $this->lotesQuery($filtros)->whereBetween('fecha_vencimiento', [today(), today()->copy()->addDays($dias)])->paginate($filtros['per_page'] ?? 15);
     }
 

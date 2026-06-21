@@ -14,7 +14,7 @@ class DashboardService
     public function obtenerResumen(array $filtros): array
     {
         $hoy = today();
-        $diasAlertaVencimiento = (int) parametro('dias_alerta_vencimiento', 30);
+        $diasAlertaVencimiento = (int) \parametro('dias_alerta_vencimiento', 30);
         $scope = fn ($q) => $q->where('tenant_id', $filtros['tenant_id'])
             ->where('empresa_id', $filtros['empresa_id'])
             ->where('tienda_id', $filtros['tienda_id']);
