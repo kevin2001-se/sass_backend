@@ -6,6 +6,7 @@ use App\Models\InventarioMovimiento;
 use App\Models\Lote;
 use App\Models\Producto;
 use App\Models\ProductoPresentacion;
+use App\Services\Support\SimpleXlsxWriter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -14,8 +15,10 @@ use ZipArchive;
 
 class InventarioCargaMasivaService
 {
-    public function __construct(private readonly InventarioService $inventarioService)
-    {
+    public function __construct(
+        private readonly InventarioService $inventarioService,
+        private readonly SimpleXlsxWriter $xlsxWriter,
+    ) {
     }
 
 
@@ -30,9 +33,11 @@ class InventarioCargaMasivaService
             ->orderByDesc('es_principal')
             ->get();
 
-        $headers = $tipo === 'lotes'
-            ? ['producto_id', 'codigo_interno', 'producto', 'producto_presentacion_id', 'presentacion', 'codigo_barra', 'maneja_lote', 'maneja_vencimiento', 'codigo_lote', 'fecha_vencimiento']
-            : ['producto_id', 'codigo_interno', 'producto', 'producto_presentacion_id', 'presentacion', 'codigo_barra', 'factor_conversion', 'maneja_lote', 'maneja_vencimiento', 'codigo_lote', 'fecha_vencimiento', 'cantidad', 'motivo', 'tipo_ajuste', 'observacion'];
+        $headers = match ($tipo) {
+            'lotes' => ['codigo_barra', 'codigo_interno', 'producto', 'presentacion', 'codigo_lote', 'fecha_vencimiento'],
+            'ajuste' => ['codigo_barra', 'codigo_interno', 'producto', 'presentacion', 'codigo_lote', 'fecha_vencimiento', 'cantidad', 'tipo_ajuste', 'observacion'],
+            default => ['codigo_barra', 'codigo_interno', 'producto', 'presentacion', 'codigo_lote', 'fecha_vencimiento', 'cantidad', 'observacion'],
+        };
 
         $rows = $presentaciones->map(function (ProductoPresentacion $presentacion) use ($headers, $tipo) {
             $producto = $presentacion->producto;
@@ -57,16 +62,15 @@ class InventarioCargaMasivaService
             return collect($headers)->mapWithKeys(fn ($header) => [$header => $base[$header] ?? ''])->all();
         })->all();
 
-        $html = view('inventario.plantilla-carga-masiva', [
-            'tipo' => $tipo,
-            'headers' => $headers,
-            'rows' => $rows,
-        ])->render();
-
-        return response($html, 200, [
-            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="plantilla-'.$tipo.'-inventario.xls"',
+        $path = $this->xlsxWriter->make('Plantilla '.strtoupper($tipo), $headers, $rows, [
+            'nota' => $tipo === 'lotes'
+                ? 'Complete codigo_lote y fecha_vencimiento si corresponde.'
+                : 'Complete cantidad. Las filas sin cantidad no se procesan.',
         ]);
+
+        return response()->download($path, 'plantilla-'.$tipo.'-inventario.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
     public function importarMovimientos(UploadedFile $file, string $operacion, array $scope, array $options = []): array
     {

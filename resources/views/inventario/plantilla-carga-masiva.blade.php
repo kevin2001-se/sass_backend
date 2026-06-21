@@ -7,18 +7,19 @@
         th, td { border: 1px solid #d9dee8; padding: 6px; mso-number-format:"\@"; }
         th { background: #eef2ff; font-weight: bold; }
         .note { margin-bottom: 12px; color: #475467; }
+        .muted { color: #667085; }
     </style>
 </head>
 <body>
-    <h3>Plantilla carga masiva - {{ strtoupper($tipo) }}</h3>
+    <h3>Plantilla {{ strtoupper($tipo) }}</h3>
     <div class="note">
-        Complete las columnas editables. Para movimientos, si la columna cantidad queda vacia, la fila se omitira.
+        Complete solo las columnas necesarias. En movimientos, las filas sin cantidad no se procesan.
     </div>
     <table>
         <thead>
         <tr>
             @foreach ($headers as $header)
-                <th>{{ $header }}</th>
+                <th>{{ str_replace('_', ' ', strtoupper($header)) }}</th>
             @endforeach
         </tr>
         </thead>

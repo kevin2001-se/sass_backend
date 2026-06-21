@@ -2,6 +2,7 @@
 
 namespace App\Services\Reportes;
 
+use App\Services\Support\SimpleXlsxWriter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Response;
@@ -15,18 +16,18 @@ class ReporteExportService
         protected ReporteInventarioService $inventario,
         protected ReporteCajaService $caja,
         protected ReporteFinancieroService $financiero,
+        protected SimpleXlsxWriter $xlsxWriter,
     ) {
     }
 
-    public function descargarExcel(string $grupo, string $reporte, array $filtros): Response
+    public function descargarExcel(string $grupo, string $reporte, array $filtros)
     {
         $data = $this->resolver($grupo, $reporte, $filtros);
-        $html = view('reportes.export-table', $data)->render();
+        $path = $this->xlsxWriter->make($data['title'], $data['headers'], $data['rows'], $data['summary']);
 
-        return response($html, 200, [
-            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="'.$data['filename'].'.xls"',
-        ]);
+        return response()->download($path, $data['filename'].'.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     public function descargarPdf(string $grupo, string $reporte, array $filtros): Response
